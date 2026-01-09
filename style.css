@@ -1,40 +1,69 @@
 /* style.css */
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 
-/* 1. 기본 폰트 & 배경 설정 */
+/* 1. 폰트 강제 적용 (Pretendard) */
+html, body, [class*="css"], .stApp, .stTextInput, .stSelectbox, .stButton {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif !important;
+}
+
+/* 2. 배경 및 레이아웃 설정 */
 .stApp {
-    font-family: 'Pretendard', sans-serif !important;
-    background-color: #F8FAFC; /* 아주 연한 쿨그레이 (Shadcn 느낌) */
+    background-color: #F8FAFC; /* Shadcn 스타일의 연한 배경 */
 }
 
-/* 2. Streamlit 툴바/헤더/푸터 숨김 (필수) */
-header[data-testid="stHeader"],
-div[data-testid="stToolbar"],
-footer {
-    display: none !important;
-    visibility: hidden !important;
-}
-
-/* 3. 레이아웃 여백 초기화 */
 .block-container {
     padding-top: 2rem !important;
     padding-bottom: 3rem !important;
     max-width: 100% !important;
 }
 
-/* 4. 사이드바 스타일 보정 */
-section[data-testid="stSidebar"] {
-    background-color: #FFFFFF;
-    border-right: 1px solid #E2E8F0; /* 연한 보더 */
+/* =========================================================
+   [중요] 사이드바 토글 버튼 살리기
+   헤더 전체를 숨기면(display:none) 사이드바 여는 버튼도 사라집니다.
+   따라서 툴바(오른쪽 메뉴)만 숨기고, 헤더 영역은 남겨둡니다.
+   ========================================================= */
+
+/* 헤더 배경을 투명하게 */
+header[data-testid="stHeader"] {
+    background-color: transparent !important;
 }
 
-/* 5. 네이티브 입력창들이 Shadcn과 어울리도록 미세 조정 */
+/* 우측 상단 툴바(Deploy, 점3개 메뉴)만 숨김 */
+div[data-testid="stToolbar"] {
+    display: none !important; 
+    visibility: hidden !important;
+}
+
+/* 사이드바 여닫는 버튼(화살표)은 보이게 강제 설정 */
+button[data-testid="baseButton-headerNoPadding"] {
+    display: block !important;
+    visibility: visible !important;
+    color: #000000 !important; /* 버튼 색상 검정 */
+}
+[data-testid="stSidebarCollapsedControl"] {
+    display: block !important;
+    visibility: visible !important;
+}
+
+/* 푸터 숨김 */
+footer {
+    display: none !important;
+}
+
+/* 3. 사이드바 스타일 보정 */
+section[data-testid="stSidebar"] {
+    background-color: #FFFFFF;
+    border-right: 1px solid #E2E8F0;
+}
+
+/* 4. 입력창 디자인 (Shadcn UI와 어울리게) */
 .stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
-    border-radius: 6px !important; /* Shadcn 스타일 R값 */
+    border-radius: 6px !important;
     border: 1px solid #E2E8F0 !important;
+    background-color: #FFFFFF !important;
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
 }
 .stTextInput input:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within {
-    border-color: #000000 !important; /* 포커스시 블랙 */
+    border-color: #000000 !important;
     box-shadow: 0 0 0 1px #000000 !important;
 }
