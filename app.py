@@ -1,5 +1,5 @@
 import streamlit as st
-import streamlit_shadcn_ui as ui # Shadcn UI 라이브러리
+import streamlit_shadcn_ui as ui
 from pptx import Presentation
 from pptx.util import Mm, Pt
 from pptx.enum.text import PP_ALIGN
@@ -7,7 +7,7 @@ import io
 import os
 import time
 
-# 깃허브 라이브러리 로드
+# GitHub 라이브러리 로드
 try:
     from github import Github
     GITHUB_AVAILABLE = True
@@ -16,15 +16,13 @@ except ImportError:
 
 # --- 설정 ---
 TEMPLATE_FILE = "template.pptx"
-# [수정] 사이드바 전용 로고 파일 경로 지정
-SIDEBAR_LOGO = "assets/bossgolf.svg"
+SIDEBAR_LOGO = "assets/bossgolf.svg" # [브랜드] 로고 파일
 LOGO_DIR = "assets/logos"
 ARTWORK_DIR = "assets/artworks"
 CSS_FILE = "style.css"
 
 # --- 유틸리티 함수 ---
 def init_folders():
-    # 폴더가 없으면 생성
     for folder in [LOGO_DIR, ARTWORK_DIR]:
         if not os.path.exists(folder): os.makedirs(folder)
 
@@ -35,10 +33,9 @@ def load_css(file_name):
 
 def get_files(folder_path):
     if not os.path.exists(folder_path): return []
-    # svg도 포함할지 여부는 선택이지만, PPT 생성용 이미지는 보통 png/jpg를 씁니다.
     return [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.svg'))]
 
-# --- 깃허브 연동 함수 ---
+# --- 깃허브 함수 (생략 없이 유지) ---
 def get_github_repo():
     if not GITHUB_AVAILABLE: return None
     try:
@@ -46,10 +43,8 @@ def get_github_repo():
     except: return None
 
 def upload_file(file_obj, folder_path):
-    # 1. 로컬 저장
     with open(os.path.join(folder_path, file_obj.name), "wb") as f:
         f.write(file_obj.getbuffer())
-    # 2. 깃허브 저장
     repo = get_github_repo()
     if repo:
         try:
@@ -77,7 +72,7 @@ def delete_file_asset(filename, folder_path):
             repo.delete_file(path, f"Delete {filename}", contents.sha, branch=branch)
         except: pass
 
-# --- PPT 생성 로직 (MM 단위) ---
+# --- PPT 생성 로직 ---
 def create_pptx(products):
     if os.path.exists(TEMPLATE_FILE): prs = Presentation(TEMPLATE_FILE)
     else: prs = Presentation()
@@ -91,8 +86,8 @@ def create_pptx(products):
         tb.text_frame.text = f"{data['name']}\n{data['code']}"
         tb.text_frame.paragraphs[0].font.size = Pt(24)
         tb.text_frame.paragraphs[0].font.bold = True
-        try: tb.text_frame.paragraphs[0].font.name = 'Pretendard' 
-        except: pass 
+        try: tb.text_frame.paragraphs[0].font.name = 'Pretendard'
+        except: pass
         
         rrp = slide.shapes.add_textbox(Mm(250), Mm(15), Mm(50), Mm(15))
         rrp.text_frame.text = f"RRP : {data['rrp']}"
@@ -130,7 +125,6 @@ def create_pptx(products):
 # =========================================================
 # APP MAIN
 # =========================================================
-# [수정] 페이지 타이틀 변경
 st.set_page_config(page_title="BOSS Golf Admin", layout="wide", initial_sidebar_state="expanded")
 init_folders()
 load_css(CSS_FILE)
@@ -138,23 +132,23 @@ load_css(CSS_FILE)
 if 'product_list' not in st.session_state:
     st.session_state.product_list = []
 
-# --- 사이드바 ---
+# --- 1. 좌측 사이드바 (Navigation) ---
 with st.sidebar:
-    # [수정] 지정된 SVG 로고 파일 사용
+    # 로고
     if os.path.exists(SIDEBAR_LOGO):
-        st.image(SIDEBAR_LOGO, width=140) # 로고 크기 살짝 키움
+        st.image(SIDEBAR_LOGO, width=150)
     else:
-        # 파일이 없을 경우 텍스트 대체
         st.markdown("## BOSS Golf")
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # [수정] 뱃지 텍스트 변경
+    # 뱃지
     ui.badges(badge_list=[("BOSS Golf Admin", "default")], key="admin_badge")
     
     st.markdown("---")
     
-    menu = st.radio("MENU", ["PPT Spec Maker", "Asset Manager"], label_visibility="collapsed")
+    # 메뉴
+    menu = st.radio("MENU", ["Spec Maker", "Asset Manager"], label_visibility="collapsed")
     
     st.markdown("---")
     if get_github_repo():
@@ -162,65 +156,71 @@ with st.sidebar:
     else:
         st.caption("⚪ Local Mode")
 
-# --- 메인 콘텐츠 ---
 
-# 1. PPT 제작
-if menu == "PPT Spec Maker":
-    # [수정] 타이틀 변경
-    st.title("BOSS Golf Spec Maker")
+# --- 2. 우측 콘텐츠 영역 (Card Layout) ---
+
+# [메뉴 1] PPT 스펙 메이커
+if menu == "Spec Maker":
+    st.title("Spec Sheet Maker")
     
-    tab_form, tab_list = st.tabs(["📝 Input Form", "📋 Queue & Export"])
+    # 탭 메뉴
+    tab_form, tab_list = st.tabs(["📝 Input", "📋 Queue"])
     
     with tab_form:
-        with st.container():
-            st.markdown("#### Product Details")
-            with st.form("spec_form", clear_on_submit=True):
-                c1, c2 = st.columns([2, 1])
-                with c1:
-                    prod_name = st.text_input("Product Name", "MEN'S T-SHIRTS")
-                    prod_code = st.text_input("Product Code", placeholder="e.g. BKFTM1581")
-                with c2:
-                    prod_rrp = st.text_input("RRP", "Undecided")
-                
-                st.markdown("#### Assets")
-                c3, c4, c5 = st.columns([2, 1, 1])
-                with c3:
-                    main_img = st.file_uploader("Main Image", type=['png', 'jpg'])
-                with c4:
-                    sel_logo = st.selectbox("Logo", ["선택 없음"] + get_files(LOGO_DIR))
-                with c5:
-                    sel_art = st.selectbox("Artwork", ["선택 없음"] + get_files(ARTWORK_DIR))
-                
-                st.markdown("#### Colorways")
-                colors = []
-                for i in range(3):
-                    cc1, cc2 = st.columns([1, 2])
-                    with cc1: ci = st.file_uploader(f"Image {i+1}", type=['png', 'jpg'], key=f"ci{i}")
-                    with cc2: cn = st.text_input(f"Name {i+1}", key=f"cn{i}")
-                    if ci and cn: colors.append({"img": ci, "name": cn})
-                    st.markdown("<div style='margin-bottom:10px'></div>", unsafe_allow_html=True)
-                
-                if st.form_submit_button("Add to Queue", type="primary"):
-                    if not prod_code or not main_img:
-                        st.error("Code & Main Image are required.")
-                    else:
-                        st.session_state.product_list.append({
-                            "name": prod_name, "code": prod_code, "rrp": prod_rrp,
-                            "main_image": main_img, "logo": sel_logo, "artwork": sel_art,
-                            "colors": colors
-                        })
-                        st.success(f"Added: {prod_code}")
+        # [중요] 토스 스타일 흰색 카드 시작
+        st.markdown('<div class="toss-card">', unsafe_allow_html=True)
+        
+        st.markdown("### Product Details")
+        with st.form("spec_form", clear_on_submit=True):
+            c1, c2 = st.columns([2, 1])
+            with c1:
+                prod_name = st.text_input("Product Name", "MEN'S T-SHIRTS")
+                prod_code = st.text_input("Product Code", placeholder="e.g. BKFTM1581")
+            with c2:
+                prod_rrp = st.text_input("RRP", "Undecided")
+            
+            st.markdown("### Assets")
+            c3, c4, c5 = st.columns([2, 1, 1])
+            with c3:
+                main_img = st.file_uploader("Main Image", type=['png', 'jpg'])
+            with c4:
+                sel_logo = st.selectbox("Logo", ["선택 없음"] + get_files(LOGO_DIR))
+            with c5:
+                sel_art = st.selectbox("Artwork", ["선택 없음"] + get_files(ARTWORK_DIR))
+            
+            st.markdown("### Colorways")
+            colors = []
+            for i in range(3):
+                cc1, cc2 = st.columns([1, 2])
+                with cc1: ci = st.file_uploader(f"Image {i+1}", type=['png', 'jpg'], key=f"ci{i}")
+                with cc2: cn = st.text_input(f"Name {i+1}", key=f"cn{i}")
+                if ci and cn: colors.append({"img": ci, "name": cn})
+                st.write("") # 간격
+            
+            st.markdown("---")
+            if st.form_submit_button("Add to Queue", type="primary"):
+                if not prod_code or not main_img:
+                    st.error("Code & Main Image are required.")
+                else:
+                    st.session_state.product_list.append({
+                        "name": prod_name, "code": prod_code, "rrp": prod_rrp,
+                        "main_image": main_img, "logo": sel_logo, "artwork": sel_art,
+                        "colors": colors
+                    })
+                    st.success(f"Added: {prod_code}")
+        
+        st.markdown('</div>', unsafe_allow_html=True) # 카드 닫기
 
     with tab_list:
-        st.markdown(f"#### Generated Queue ({len(st.session_state.product_list)})")
+        # [중요] 토스 스타일 흰색 카드 시작
+        st.markdown('<div class="toss-card">', unsafe_allow_html=True)
         
-        col_act1, col_act2 = st.columns([1, 4])
-        with col_act1:
-            if ui.button("Clear List", variant="outline", key="clear_btn"):
+        c_head, c_btn = st.columns([4, 1])
+        with c_head: st.markdown(f"### Pending Items ({len(st.session_state.product_list)})")
+        with c_btn:
+            if ui.button("Clear All", variant="outline", key="clear"):
                 st.session_state.product_list = []
                 st.rerun()
-        
-        st.markdown("---")
         
         if not st.session_state.product_list:
             st.info("No items in queue.")
@@ -233,44 +233,55 @@ if menu == "PPT Spec Maker":
             
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("🚀 Generate PPT", type="primary"):
-                with st.spinner("Processing..."):
+                with st.spinner("Generating..."):
                     ppt = create_pptx(st.session_state.product_list)
                 st.success("Done!")
-                st.download_button("Download .pptx", ppt, "BOSS_Golf_SpecSheet.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+                st.download_button("Download .pptx", ppt, "BOSS_Golf_Spec.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+        
+        st.markdown('</div>', unsafe_allow_html=True) # 카드 닫기
 
-# 2. 자산 관리
+# [메뉴 2] 자산 관리
 elif menu == "Asset Manager":
     st.title("Asset Manager")
     
+    # 탭 메뉴 (Logos / Artworks)
     active_tab = ui.tabs(options=['Logos', 'Artworks'], defaultValue='Logos', key="asset_tabs")
     target_dir = LOGO_DIR if active_tab == 'Logos' else ARTWORK_DIR
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    with st.expander("📤 Upload New Files", expanded=True):
-        uploaded = st.file_uploader(f"Upload to {active_tab}", type=['png', 'jpg', 'svg'], accept_multiple_files=True)
-        if uploaded and st.button("Save to GitHub"):
-            with st.spinner("Uploading..."):
-                cnt = 0
-                for f in uploaded:
-                    if upload_file(f, target_dir): cnt += 1
-                if cnt:
-                    st.success(f"{cnt} files saved.")
-                    time.sleep(1)
-                    st.rerun()
-
-    st.markdown("---")
+    # 1. 업로드 카드
+    st.markdown('<div class="toss-card">', unsafe_allow_html=True)
+    st.markdown(f"### Upload to {active_tab}")
     
+    uploaded = st.file_uploader(f"Choose files", type=['png', 'jpg', 'svg'], accept_multiple_files=True)
+    if uploaded and st.button("Save to Storage"):
+        with st.spinner("Saving..."):
+            cnt = 0
+            for f in uploaded:
+                if upload_file(f, target_dir): cnt += 1
+            if cnt:
+                st.success(f"{cnt} files saved.")
+                time.sleep(1)
+                st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # 2. 갤러리 카드
+    st.markdown('<div class="toss-card">', unsafe_allow_html=True)
     files = get_files(target_dir)
+    st.markdown(f"### Library ({len(files)})")
+    
     if not files:
-        st.info("No files found.")
+        st.info("Empty folder.")
     else:
         cols = st.columns(5)
         for i, f in enumerate(files):
             with cols[i%5]:
+                # 이미지 컨테이너
                 st.image(os.path.join(target_dir, f), use_container_width=True)
+                st.caption(f)
                 if st.button("Delete", key=f"del_{f}"):
                     delete_file_asset(f, target_dir)
                     time.sleep(1)
                     st.rerun()
-                st.caption(f)
+    st.markdown('</div>', unsafe_allow_html=True)
