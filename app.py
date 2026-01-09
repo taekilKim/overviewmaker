@@ -1,5 +1,6 @@
 import streamlit as st
 import streamlit_shadcn_ui as ui
+import streamlit_antd_components as sac # [NEW] 전문적인 사이드바 메뉴용
 from pptx import Presentation
 from pptx.util import Mm, Pt
 from pptx.enum.text import PP_ALIGN
@@ -7,7 +8,7 @@ import io
 import os
 import time
 
-# GitHub 라이브러리 로드
+# GitHub 라이브러리
 try:
     from github import Github
     GITHUB_AVAILABLE = True
@@ -16,7 +17,7 @@ except ImportError:
 
 # --- 설정 ---
 TEMPLATE_FILE = "template.pptx"
-SIDEBAR_LOGO = "assets/bossgolf.svg" # [브랜드] 로고 파일
+SIDEBAR_LOGO = "assets/bossgolf.svg"
 LOGO_DIR = "assets/logos"
 ARTWORK_DIR = "assets/artworks"
 CSS_FILE = "style.css"
@@ -35,7 +36,7 @@ def get_files(folder_path):
     if not os.path.exists(folder_path): return []
     return [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.svg'))]
 
-# --- 깃허브 함수 (생략 없이 유지) ---
+# --- 깃허브 연동 함수 ---
 def get_github_repo():
     if not GITHUB_AVAILABLE: return None
     try:
@@ -86,28 +87,22 @@ def create_pptx(products):
         tb.text_frame.text = f"{data['name']}\n{data['code']}"
         tb.text_frame.paragraphs[0].font.size = Pt(24)
         tb.text_frame.paragraphs[0].font.bold = True
-        try: tb.text_frame.paragraphs[0].font.name = 'Pretendard'
+        try: tb.text_frame.paragraphs[0].font.name = 'Inter' # 디자인에 맞게 Inter로 변경
         except: pass
         
         rrp = slide.shapes.add_textbox(Mm(250), Mm(15), Mm(50), Mm(15))
         rrp.text_frame.text = f"RRP : {data['rrp']}"
         rrp.text_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
 
-        # Images
         if data['main_image']:
             slide.shapes.add_picture(data['main_image'], left=Mm(20), top=Mm(60), width=Mm(140))
-        
-        if data['logo'] and data['logo'] != "선택 없음":
+        if data['logo'] and data['logo'] != "None":
             p_logo = os.path.join(LOGO_DIR, data['logo'])
-            if os.path.exists(p_logo):
-                slide.shapes.add_picture(p_logo, left=Mm(180), top=Mm(60), width=Mm(40))
-        
-        if data['artwork'] and data['artwork'] != "선택 없음":
+            if os.path.exists(p_logo): slide.shapes.add_picture(p_logo, left=Mm(180), top=Mm(60), width=Mm(40))
+        if data['artwork'] and data['artwork'] != "None":
             p_art = os.path.join(ARTWORK_DIR, data['artwork'])
-            if os.path.exists(p_art):
-                slide.shapes.add_picture(p_art, left=Mm(180), top=Mm(110), width=Mm(40))
+            if os.path.exists(p_art): slide.shapes.add_picture(p_art, left=Mm(180), top=Mm(110), width=Mm(40))
 
-        # Colors
         sx, sy, w, g = 180, 155, 30, 5
         for i, c in enumerate(data['colors']):
             cx = sx + (i * (w + g))
@@ -125,159 +120,184 @@ def create_pptx(products):
 # =========================================================
 # APP MAIN
 # =========================================================
-st.set_page_config(page_title="BOSS Golf Admin", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Admin Kit", layout="wide", initial_sidebar_state="expanded")
 init_folders()
 load_css(CSS_FILE)
 
 if 'product_list' not in st.session_state:
     st.session_state.product_list = []
 
-# --- 1. 좌측 사이드바 (Navigation) ---
+# --- 1. 좌측 사이드바 (Admin Style Navigation) ---
 with st.sidebar:
-    # 로고
+    # (1) 로고 영역
     if os.path.exists(SIDEBAR_LOGO):
-        st.image(SIDEBAR_LOGO, width=150)
+        st.image(SIDEBAR_LOGO, width=140)
     else:
-        st.markdown("## BOSS Golf")
+        st.markdown("### BOSS Golf")
     
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+
+    # (2) 전문적인 메뉴 구성 (sac 라이브러리 사용)
+    # 아이콘은 Bootstrap Icons (bs) 사용
+    selected_menu = sac.menu([
+        sac.MenuItem('Dashboard', icon='grid-fill'), # Overview
+        sac.MenuItem('Spec Maker', icon='file-earmark-plus-fill'), # PPT Maker
+        sac.MenuItem('Assets', icon='images', children=[ # Nested Menu
+            sac.MenuItem('Logos', icon='box-seam'),
+            sac.MenuItem('Artworks', icon='brush'),
+        ]),
+        sac.MenuItem(type='divider'),
+        sac.MenuItem('Settings', icon='gear', disabled=True),
+    ], size='sm', color='dark', open_all=True)
+
+    st.markdown("<div style='margin-top: auto;'></div>", unsafe_allow_html=True)
+    
+    # 하단 깃허브 상태
+    if get_github_repo():
+        ui.badges(badge_list=[("GitHub Sync", "secondary")], key="gh_status")
+    else:
+        ui.badges(badge_list=[("Local Mode", "outline")], key="local_status")
+
+
+# --- 2. 메인 콘텐츠 영역 (White Cards) ---
+
+# [PAGE] Dashboard
+if selected_menu == 'Dashboard':
+    # Breadcrumbs & Header
+    st.markdown("#### Dashboard > Overview")
+    st.title("Overview")
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # 뱃지
-    ui.badges(badge_list=[("BOSS Golf Admin", "default")], key="admin_badge")
+    # Metric Cards (Shadcn Style)
+    cols = st.columns(3)
+    with cols[0]:
+        ui.metric_card(title="Pending Specs", content=f"{len(st.session_state.product_list)}", description="Ready to generate", key="m1")
+    with cols[1]:
+        ui.metric_card(title="Total Assets", content=f"{len(get_files(LOGO_DIR)) + len(get_files(ARTWORK_DIR))}", description="Logos & Artworks", key="m2")
+    with cols[2]:
+        ui.metric_card(title="System Status", content="Active", description="Version 1.2.0", key="m3")
+
+    st.markdown("<br>", unsafe_allow_html=True)
     
+    # Recent Activity (Shadcn Card)
+    st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
+    st.markdown("### Recent Activity")
+    st.markdown("Your recent specification sheet generation tasks.")
     st.markdown("---")
-    
-    # 메뉴
-    menu = st.radio("MENU", ["Spec Maker", "Asset Manager"], label_visibility="collapsed")
-    
-    st.markdown("---")
-    if get_github_repo():
-        st.caption("🟢 GitHub Connected")
+    if not st.session_state.product_list:
+        st.info("No active tasks.")
     else:
-        st.caption("⚪ Local Mode")
+        for item in st.session_state.product_list[-3:]: # Show last 3
+            st.markdown(f"**{item['code']}** - {item['name']}")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
-# --- 2. 우측 콘텐츠 영역 (Card Layout) ---
+# [PAGE] Spec Maker
+elif selected_menu == 'Spec Maker':
+    st.markdown("#### Dashboard > Spec Maker")
+    st.title("Create Specifications")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-# [메뉴 1] PPT 스펙 메이커
-if menu == "Spec Maker":
-    st.title("Spec Sheet Maker")
+    # 탭으로 분리
+    tab1, tab2 = st.tabs(["Editor", "Queue"])
     
-    # 탭 메뉴
-    tab_form, tab_list = st.tabs(["📝 Input", "📋 Queue"])
-    
-    with tab_form:
-        # [중요] 토스 스타일 흰색 카드 시작
-        st.markdown('<div class="toss-card">', unsafe_allow_html=True)
-        
+    with tab1:
+        st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
         st.markdown("### Product Details")
+        st.caption("Enter the product information below.")
+        
         with st.form("spec_form", clear_on_submit=True):
             c1, c2 = st.columns([2, 1])
             with c1:
-                prod_name = st.text_input("Product Name", "MEN'S T-SHIRTS")
-                prod_code = st.text_input("Product Code", placeholder="e.g. BKFTM1581")
+                p_name = st.text_input("Product Name", "MEN'S T-SHIRTS")
+                p_code = st.text_input("Product Code", placeholder="BKFTM1581")
             with c2:
-                prod_rrp = st.text_input("RRP", "Undecided")
+                p_rrp = st.text_input("RRP", "Undecided")
             
-            st.markdown("### Assets")
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("### Assets & Colors")
+            
             c3, c4, c5 = st.columns([2, 1, 1])
-            with c3:
-                main_img = st.file_uploader("Main Image", type=['png', 'jpg'])
-            with c4:
-                sel_logo = st.selectbox("Logo", ["선택 없음"] + get_files(LOGO_DIR))
-            with c5:
-                sel_art = st.selectbox("Artwork", ["선택 없음"] + get_files(ARTWORK_DIR))
-            
-            st.markdown("### Colorways")
-            colors = []
-            for i in range(3):
-                cc1, cc2 = st.columns([1, 2])
-                with cc1: ci = st.file_uploader(f"Image {i+1}", type=['png', 'jpg'], key=f"ci{i}")
-                with cc2: cn = st.text_input(f"Name {i+1}", key=f"cn{i}")
-                if ci and cn: colors.append({"img": ci, "name": cn})
-                st.write("") # 간격
+            with c3: main_img = st.file_uploader("Main Image", type=['png','jpg'])
+            with c4: s_logo = st.selectbox("Logo", ["None"] + get_files(LOGO_DIR))
+            with c5: s_art = st.selectbox("Artwork", ["None"] + get_files(ARTWORK_DIR))
             
             st.markdown("---")
+            colors = []
+            for i in range(3):
+                col_a, col_b = st.columns([1, 2])
+                with col_a: ci = st.file_uploader(f"Color {i+1} Img", type=['png','jpg'], key=f"ci{i}")
+                with col_b: cn = st.text_input(f"Color {i+1} Name", key=f"cn{i}")
+                if ci and cn: colors.append({"img":ci, "name":cn})
+            
+            st.markdown("<br>", unsafe_allow_html=True)
             if st.form_submit_button("Add to Queue", type="primary"):
-                if not prod_code or not main_img:
-                    st.error("Code & Main Image are required.")
+                if not p_code or not main_img:
+                    st.error("Code and Main Image are required.")
                 else:
                     st.session_state.product_list.append({
-                        "name": prod_name, "code": prod_code, "rrp": prod_rrp,
-                        "main_image": main_img, "logo": sel_logo, "artwork": sel_art,
-                        "colors": colors
+                        "name":p_name, "code":p_code, "rrp":p_rrp, 
+                        "main_image":main_img, "logo":s_logo, "artwork":s_art, "colors":colors
                     })
-                    st.success(f"Added: {prod_code}")
-        
-        st.markdown('</div>', unsafe_allow_html=True) # 카드 닫기
+                    st.success(f"Added {p_code} to queue.")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    with tab_list:
-        # [중요] 토스 스타일 흰색 카드 시작
-        st.markdown('<div class="toss-card">', unsafe_allow_html=True)
-        
+    with tab2:
+        st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
         c_head, c_btn = st.columns([4, 1])
-        with c_head: st.markdown(f"### Pending Items ({len(st.session_state.product_list)})")
+        with c_head: st.markdown(f"### Generation Queue ({len(st.session_state.product_list)})")
         with c_btn:
             if ui.button("Clear All", variant="outline", key="clear"):
                 st.session_state.product_list = []
                 st.rerun()
         
         if not st.session_state.product_list:
-            st.info("No items in queue.")
+            st.info("Queue is empty. Go to 'Editor' tab to add items.")
         else:
+            # 테이블 형식으로 보여주기 (Shadcn Table 느낌)
             for idx, item in enumerate(st.session_state.product_list):
                 with st.expander(f"{idx+1}. {item['code']} - {item['name']}"):
-                    c_img, c_info = st.columns([1, 5])
-                    with c_img: st.image(item['main_image'])
-                    with c_info: st.write(f"Colors: {len(item['colors'])} | Logo: {item['logo']}")
+                    cols = st.columns([1, 4])
+                    cols[0].image(item['main_image'])
+                    cols[1].write(f"Colors: {len(item['colors'])} | Logo: {item['logo']}")
             
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🚀 Generate PPT", type="primary"):
-                with st.spinner("Generating..."):
-                    ppt = create_pptx(st.session_state.product_list)
-                st.success("Done!")
-                st.download_button("Download .pptx", ppt, "BOSS_Golf_Spec.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
-        
-        st.markdown('</div>', unsafe_allow_html=True) # 카드 닫기
+            if st.button("Download PPT", type="primary"):
+                ppt = create_pptx(st.session_state.product_list)
+                st.download_button("Click to Download", ppt, "SpecSheet.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-# [메뉴 2] 자산 관리
-elif menu == "Asset Manager":
-    st.title("Asset Manager")
-    
-    # 탭 메뉴 (Logos / Artworks)
-    active_tab = ui.tabs(options=['Logos', 'Artworks'], defaultValue='Logos', key="asset_tabs")
-    target_dir = LOGO_DIR if active_tab == 'Logos' else ARTWORK_DIR
-    
+
+# [PAGE] Assets (Logos & Artworks)
+elif selected_menu in ['Logos', 'Artworks']:
+    st.markdown(f"#### Assets > {selected_menu}")
+    st.title(f"{selected_menu} Library")
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # 1. 업로드 카드
-    st.markdown('<div class="toss-card">', unsafe_allow_html=True)
-    st.markdown(f"### Upload to {active_tab}")
+    target_dir = LOGO_DIR if selected_menu == 'Logos' else ARTWORK_DIR
     
-    uploaded = st.file_uploader(f"Choose files", type=['png', 'jpg', 'svg'], accept_multiple_files=True)
-    if uploaded and st.button("Save to Storage"):
-        with st.spinner("Saving..."):
-            cnt = 0
-            for f in uploaded:
-                if upload_file(f, target_dir): cnt += 1
-            if cnt:
-                st.success(f"{cnt} files saved.")
-                time.sleep(1)
-                st.rerun()
+    # 1. Upload Card
+    st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
+    st.markdown("### Upload New Assets")
+    uploaded = st.file_uploader("Drag and drop files here", type=['png','jpg','svg'], accept_multiple_files=True)
+    if uploaded and st.button("Upload to Storage"):
+        with st.spinner("Processing..."):
+            for f in uploaded: upload_file(f, target_dir)
+        st.success("Upload complete.")
+        time.sleep(1)
+        st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
-
-    # 2. 갤러리 카드
-    st.markdown('<div class="toss-card">', unsafe_allow_html=True)
-    files = get_files(target_dir)
-    st.markdown(f"### Library ({len(files)})")
     
+    # 2. Grid View
+    st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
+    files = get_files(target_dir)
+    st.markdown(f"### Library ({len(files)} items)")
     if not files:
-        st.info("Empty folder.")
+        st.info("No files found.")
     else:
         cols = st.columns(5)
         for i, f in enumerate(files):
             with cols[i%5]:
-                # 이미지 컨테이너
                 st.image(os.path.join(target_dir, f), use_container_width=True)
                 st.caption(f)
                 if st.button("Delete", key=f"del_{f}"):

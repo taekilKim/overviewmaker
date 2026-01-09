@@ -1,65 +1,98 @@
-/* style.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* 1. 폰트 임포트 (가장 먼저 로드) */
-@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
-
-/* 2. 폰트 강제 적용 (Targeting Specific Elements) */
-/* * {} 만으로는 부족할 때가 많아 구체적인 클래스를 타겟팅합니다 */
-html, body, .stApp, .stMarkdown, .stTextInput, .stSelectbox, .stButton, div[data-testid="stMarkdownContainer"] p {
-    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif !important;
+/* 1. Global Reset & Font (Inter) */
+* {
+    font-family: 'Inter', sans-serif !important;
 }
 
-/* 3. 배경색 설정 (Toss Admin Style) */
-.stApp {
-    background-color: #F2F4F6; /* 전체 배경: 회색 */
+html, body, .stApp {
+    background-color: #F4F4F5 !important; /* Shadcn Zinc-100 배경색 */
+    color: #09090B !important; /* Zinc-950 텍스트 */
 }
 
-/* 4. 사이드바 스타일 */
-section[data-testid="stSidebar"] {
-    background-color: #FFFFFF; /* 사이드바: 흰색 */
-    border-right: 1px solid #E5E8EB; /* 연한 경계선 */
-}
-
-/* 5. 메인 영역 레이아웃 조정 */
-.block-container {
-    padding-top: 2rem !important;
-    padding-bottom: 5rem !important;
-    max-width: 1200px !important; /* 너무 넓게 퍼지지 않도록 제한 */
-}
-
-/* 6. 토스 스타일 '흰색 카드' 클래스 정의 (app.py에서 사용) */
-.toss-card {
-    background-color: #FFFFFF;
-    border-radius: 16px;
-    padding: 32px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02); /* 아주 은은한 그림자 */
-    border: 1px solid #E5E8EB; /* 미세한 테두리 */
-    margin-bottom: 24px;
-}
-
-/* 7. Streamlit 기본 요소 숨기기 */
+/* 2. Streamlit 기본 헤더/툴바 숨김 */
 header[data-testid="stHeader"] { background-color: transparent !important; }
 div[data-testid="stToolbar"] { display: none !important; }
 footer { display: none !important; }
 
-/* 8. 입력 필드 디자인 보정 (Shadcn과 어울리게) */
-.stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
+/* 3. 사이드바 스타일 (흰색 배경 + 우측 보더) */
+section[data-testid="stSidebar"] {
     background-color: #FFFFFF !important;
-    border: 1px solid #E5E8EB !important;
-    border-radius: 8px !important;
+    border-right: 1px solid #E4E4E7 !important; /* Zinc-200 */
     box-shadow: none !important;
-    color: #333D4B !important;
-}
-.stTextInput input:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within {
-    border-color: #3182F6 !important; /* Toss Blue */
-    box-shadow: 0 0 0 1px #3182F6 !important;
 }
 
-/* 9. 탭 스타일 보정 */
+/* 4. Shadcn Card 스타일 클래스 */
+.shadcn-card {
+    background-color: #FFFFFF;
+    border: 1px solid #E4E4E7; /* Zinc-200 */
+    border-radius: 0.5rem; /* radius-md */
+    padding: 24px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    margin-bottom: 24px;
+}
+
+/* 5. 타이틀 및 텍스트 스타일 */
+h1 {
+    font-size: 30px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.025em !important;
+    color: #09090B !important;
+}
+h2, h3 {
+    font-weight: 600 !important;
+    color: #09090B !important;
+    letter-spacing: -0.025em !important;
+}
+p, span, label {
+    color: #71717A !important; /* Zinc-500 (서브 텍스트) */
+    font-size: 14px !important;
+}
+
+/* 6. 입력 필드 (Clean Border) */
+.stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
+    background-color: #FFFFFF !important;
+    border: 1px solid #E4E4E7 !important;
+    border-radius: 6px !important;
+    color: #09090B !important;
+    font-size: 14px !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+.stTextInput input:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within {
+    border-color: #18181B !important; /* Focus 시 진한 회색/블랙 */
+    box-shadow: 0 0 0 1px #18181B !important;
+}
+
+/* 7. 버튼 스타일 재정의 (Primary: Black, Secondary: Outline) */
+div.stButton > button {
+    background-color: #18181B !important; /* Zinc-900 (Black) */
+    color: #FFFFFF !important;
+    border-radius: 6px !important;
+    font-weight: 500 !important;
+    border: none !important;
+    padding: 0.5rem 1rem !important;
+}
+div.stButton > button:hover {
+    background-color: #27272A !important; /* Zinc-800 */
+}
+
+/* 8. 탭 스타일 (Shadcn Tabs) */
 .stTabs [data-baseweb="tab-list"] {
-    border-bottom: 1px solid #E5E8EB;
-    background-color: transparent;
+    background-color: #F4F4F5;
+    padding: 4px;
+    border-radius: 6px;
+    gap: 0;
 }
 .stTabs [data-baseweb="tab"] {
     background-color: transparent;
+    border: none;
+    color: #71717A;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+}
+.stTabs [aria-selected="true"] {
+    background-color: #FFFFFF !important;
+    color: #09090B !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
