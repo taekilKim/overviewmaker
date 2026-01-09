@@ -26,7 +26,7 @@ def get_files(folder_path):
 if 'product_list' not in st.session_state:
     st.session_state.product_list = []
 
-# --- 기능 로직 (변경 없음) ---
+# --- 기능 로직 (이전과 동일) ---
 def save_uploaded_file(uploaded_file, folder):
     file_path = os.path.join(folder, uploaded_file.name)
     with open(file_path, "wb") as f:
@@ -95,121 +95,124 @@ def create_pptx(products):
     return output
 
 # =========================================================
-# 🎨 UI & CSS (Toss Design System Applied)
+# 🎨 UI & CSS (REAL TDS Style)
 # =========================================================
 st.set_page_config(page_title="BOSS Spec Maker", layout="wide")
 init_folders()
 
-# CSS Injection
+# CSS Injection: Pretendard 폰트 + 깔끔한 토스 스타일
 st.markdown("""
 <style>
-    /* 1. 기본 폰트 및 배경 설정 */
-    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-    
-    html, body, [class*="css"]  {
+    /* 1. 폰트 임베딩 (Pretendard) */
+    @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
+    html, body, .stApp {
         font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif !important;
-        background-color: #F2F4F6; /* 토스 배경색 */
-        color: #191F28; /* 기본 텍스트 블랙 */
-    }
-    
-    /* 2. 메인 컨테이너 스타일 */
-    .stApp {
-        background-color: #F2F4F6;
-    }
-    .main .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-        max-width: 1200px;
+        background-color: #F9FAFB !important; /* 아주 연한 회색 (Clean) */
+        color: #191F28 !important; /* 토스 블랙 */
     }
 
-    /* 3. 입력 필드 (Input) 스타일 - 회색 배경, 둥근 모서리(Small R) */
-    div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {
-        background-color: #ffffff;
-        border: 1px solid #E5E8EB;
-        border-radius: 12px !important; /* R값 축소 (12px) */
-        color: #333D4B;
+    /* 2. 제목 스타일 */
+    h1 {
+        font-size: 26px !important;
+        font-weight: 700 !important;
+        color: #191F28 !important;
+        letter-spacing: -0.5px;
     }
-    div[data-baseweb="input"] > div:focus-within {
-        border-color: #3182F6 !important; /* 토스 블루 */
+    h2, h3 {
+        font-weight: 600 !important;
+        color: #333D4B !important; /* 다크 그레이 */
+        letter-spacing: -0.3px;
+    }
+
+    /* 3. 입력 필드 (Inputs) - 흰색 배경에 깔끔한 보더 */
+    .stTextInput input, .stSelectbox div[data-baseweb="select"] > div, .stFileUploader {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E5E8EB !important; /* 연한 회색 라인 */
+        border-radius: 8px !important; /* R값 8px로 축소 */
+        color: #333D4B !important;
+        font-size: 15px !important;
+    }
+    .stTextInput input:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within {
+        border-color: #3182F6 !important; /* 포커스 시 토스 블루 */
         box-shadow: 0 0 0 1px #3182F6 !important;
     }
-    
-    /* 4. 버튼 (Button) 스타일 */
+
+    /* 4. 메인 버튼 (Primary) - 선명한 블루 */
     div.stButton > button {
-        background-color: #3182F6 !important; /* 토스 블루 */
-        color: white !important;
-        border-radius: 12px !important; /* R값 축소 */
-        border: none;
-        padding: 0.5rem 1rem;
-        font-weight: 600;
-        font-size: 14px !important; /* 폰트 사이즈 축소 */
-        box-shadow: 0 2px 8px rgba(49, 130, 246, 0.15);
-        transition: all 0.2s ease;
+        width: 100%;
+        background-color: #3182F6 !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 8px !important; /* 버튼 R값 8px */
+        padding: 0.6rem 1rem !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        box-shadow: 0 2px 6px rgba(49, 130, 246, 0.15);
+        transition: opacity 0.2s;
     }
     div.stButton > button:hover {
-        background-color: #1B64DA !important;
-        transform: translateY(-1px);
+        opacity: 0.9;
+        box-shadow: 0 4px 12px rgba(49, 130, 246, 0.25);
     }
     div.stButton > button:active {
-        transform: scale(0.98);
-    }
-    
-    /* 보조 버튼 (목록 비우기 등) 스타일 오버라이딩 */
-    button[kind="secondary"] {
-        background-color: #E8F3FF !important;
-        color: #3182F6 !important;
+        background-color: #1B64DA !important;
     }
 
-    /* 5. 카드형 레이아웃 (Expander 등) */
+    /* 5. 보조 버튼 (Secondary) - 삭제, 초기화 등 */
+    /* Streamlit은 버튼 클래스 구분이 어려워, 특정 키워드가 들어간 버튼을 타겟팅하긴 어렵습니다. 
+       대신 '목록 초기화' 같은 버튼은 UI 배치로 구분했습니다. */
+
+    /* 6. Expander (카드 형태) */
     .streamlit-expanderHeader {
-        background-color: white;
-        border-radius: 12px;
-        border: 1px solid #E5E8EB;
-        font-weight: 600;
-        color: #333D4B;
+        background-color: #FFFFFF !important;
+        border-radius: 8px !important;
+        border: 1px solid #F2F4F6 !important;
+        color: #333D4B !important;
+        font-weight: 600 !important;
     }
     div[data-testid="stExpander"] {
-        background-color: white;
-        border-radius: 12px;
-        border: none;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.03);
-        margin-bottom: 10px;
+        background-color: #FFFFFF !important;
+        border-radius: 8px !important;
+        border: 1px solid #E5E8EB !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     }
-    
-    /* 6. 탭 (Tabs) 스타일 */
+
+    /* 7. 탭 스타일 */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 20px;
-        background-color: transparent;
+        gap: 24px;
+        border-bottom: 1px solid #E5E8EB;
     }
     .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        white-space: pre-wrap;
+        height: auto;
+        padding-bottom: 12px;
         background-color: transparent;
-        border-radius: 8px;
-        color: #8B95A1;
+        border: none;
+        color: #8B95A1; /* 비활성: 회색 */
         font-weight: 600;
-        font-size: 15px;
+        font-size: 16px;
     }
     .stTabs [aria-selected="true"] {
-        background-color: white !important;
-        color: #3182F6 !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        color: #191F28 !important; /* 활성: 검정 */
+        border-bottom: 2px solid #191F28 !important; /* 밑줄 */
     }
-
-    /* 7. 제목 및 텍스트 */
-    h1 { font-size: 28px !important; font-weight: 700 !important; color: #191F28 !important; margin-bottom: 1rem !important; }
-    h2 { font-size: 22px !important; font-weight: 700 !important; color: #333D4B !important; }
-    h3 { font-size: 18px !important; font-weight: 600 !important; color: #333D4B !important; }
-    p, label { font-size: 14px !important; color: #4E5968 !important; }
-
-    /* 구분선 */
-    hr { margin: 1.5em 0; border-color: #E5E8EB; }
+    
+    /* 8. 기타 텍스트 */
+    p, label {
+        color: #4E5968 !important; /* 미디엄 그레이 */
+        font-size: 14px !important;
+    }
+    .small-font {
+        font-size: 13px;
+        color: #8B95A1;
+    }
 
 </style>
 """, unsafe_allow_html=True)
 
 # 헤더 영역
 st.title("BOSS Spec Maker")
+st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
 # 탭 메뉴
 tab_main, tab_asset = st.tabs(["PPT Generator", "Asset Manager"])
@@ -218,82 +221,85 @@ tab_main, tab_asset = st.tabs(["PPT Generator", "Asset Manager"])
 # 탭 1: PPT 제작
 # =========================================================
 with tab_main:
-    # 레이아웃: 왼쪽(입력) / 오른쪽(리스트)
-    col_input, col_list = st.columns([1, 1.8], gap="large")
+    col_input, col_list = st.columns([1, 1.5], gap="large")
     
     # [좌측] 입력 폼
     with col_input:
-        st.markdown("### Product Info")
-        with st.container(): # 흰색 카드 느낌을 주기 위한 컨테이너
-            with st.form("add_product_form", clear_on_submit=True):
-                st.caption("기본 정보")
-                prod_name = st.text_input("제품명", "MEN'S T-SHIRTS")
-                prod_code = st.text_input("품번 (필수)", placeholder="BKFTM1581")
-                prod_rrp = st.text_input("가격 (RRP)", "Undecided")
-                
-                st.caption("디자인 소스")
-                main_img = st.file_uploader("메인 이미지", type=['png', 'jpg', 'jpeg'])
-                
-                logo_list = ["선택 없음"] + get_files(LOGO_DIR)
-                art_list = ["선택 없음"] + get_files(ARTWORK_DIR)
-                c1, c2 = st.columns(2)
-                with c1: sel_logo = st.selectbox("로고", logo_list)
-                with c2: sel_artwork = st.selectbox("아트워크", art_list)
-                
-                st.caption("컬러웨이 (Colorways)")
-                c_data = []
-                # 공간 절약을 위해 Expander 사용
-                with st.expander("컬러 입력 열기 (최대 3개)", expanded=True):
-                    for i in range(3):
-                        cc1, cc2 = st.columns([1, 2])
-                        with cc1: ci = st.file_uploader(f"Img {i+1}", type=['png','jpg'], key=f"ci_{i}", label_visibility="collapsed")
-                        with cc2: cn = st.text_input(f"Name {i+1}", placeholder="색상명", key=f"cn_{i}", label_visibility="collapsed")
-                        if ci and cn: c_data.append({"img": ci, "name": cn})
-                        st.markdown("<div style='margin-bottom:5px'></div>", unsafe_allow_html=True)
+        st.subheader("제품 정보 입력")
+        
+        with st.form("add_product_form", clear_on_submit=True):
+            st.caption("기본 정보")
+            prod_name = st.text_input("제품명", "MEN'S T-SHIRTS")
+            prod_code = st.text_input("품번 (필수)", placeholder="예: BKFTM1581")
+            prod_rrp = st.text_input("가격 (RRP)", "Undecided")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.caption("디자인 리소스")
+            main_img = st.file_uploader("메인 이미지", type=['png', 'jpg', 'jpeg'])
+            
+            logo_list = ["선택 없음"] + get_files(LOGO_DIR)
+            art_list = ["선택 없음"] + get_files(ARTWORK_DIR)
+            
+            c1, c2 = st.columns(2)
+            with c1: sel_logo = st.selectbox("로고", logo_list)
+            with c2: sel_artwork = st.selectbox("아트워크", art_list)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.caption("컬러웨이 (최대 3개)")
+            
+            # 컬러 입력부 디자인 간소화
+            c_data = []
+            with st.container():
+                for i in range(3):
+                    cc1, cc2 = st.columns([1, 2])
+                    with cc1:
+                        ci = st.file_uploader(f"img_{i}", type=['png','jpg'], key=f"ci_{i}", label_visibility="collapsed")
+                    with cc2:
+                        cn = st.text_input(f"name_{i}", placeholder=f"Color {i+1} 이름", key=f"cn_{i}", label_visibility="collapsed")
+                    if ci and cn: c_data.append({"img": ci, "name": cn})
+                    st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
-                st.markdown("---")
-                add_btn = st.form_submit_button("리스트에 추가하기", use_container_width=True)
-                
-                if add_btn:
-                    if not prod_code or not main_img:
-                        st.error("품번과 메인 이미지를 입력해주세요.")
-                    else:
-                        new_item = {
-                            "name": prod_name, "code": prod_code, "rrp": prod_rrp,
-                            "main_image": main_img, "logo": sel_logo, "artwork": sel_artwork,
-                            "colors": c_data
-                        }
-                        st.session_state.product_list.append(new_item)
-                        st.success(f"{prod_code} 추가 완료")
+            st.markdown("---")
+            add_btn = st.form_submit_button("리스트에 추가")
+            
+            if add_btn:
+                if not prod_code or not main_img:
+                    st.error("품번과 메인 이미지는 필수입니다.")
+                else:
+                    new_item = {
+                        "name": prod_name, "code": prod_code, "rrp": prod_rrp,
+                        "main_image": main_img, "logo": sel_logo, "artwork": sel_artwork,
+                        "colors": c_data
+                    }
+                    st.session_state.product_list.append(new_item)
+                    st.success(f"'{prod_code}' 추가 완료")
 
     # [우측] 리스트 및 생성
     with col_list:
-        st.markdown(f"### Queue ({len(st.session_state.product_list)})")
-        
-        # 상단 액션 바
-        ac_col1, ac_col2 = st.columns([4, 1])
-        with ac_col2:
-            if st.button("초기화", key="clear_all"):
+        c_head, c_btn = st.columns([3, 1])
+        with c_head:
+            st.subheader(f"생성 대기 목록 ({len(st.session_state.product_list)})")
+        with c_btn:
+            if st.button("목록 초기화"):
                 st.session_state.product_list = []
                 st.rerun()
 
         if len(st.session_state.product_list) == 0:
-            st.info("왼쪽에서 제품 정보를 입력하고 추가해주세요.")
+            st.info("좌측에서 정보를 입력하고 '리스트에 추가' 버튼을 눌러주세요.")
         else:
             # 리스트 아이템 디자인
             for idx, item in enumerate(st.session_state.product_list):
-                # 카드 스타일 커스텀
                 with st.expander(f"{idx+1}. {item['code']}  |  {item['name']}", expanded=False):
-                    ic1, ic2 = st.columns([1, 4])
+                    ic1, ic2 = st.columns([1, 5])
                     with ic1:
-                        st.image(item['main_image'], width=80)
+                        st.image(item['main_image'], width=60)
                     with ic2:
-                        st.caption(f"Logo: {item['logo']} / Artwork: {item['artwork']}")
-                        colors_str = ", ".join([c['name'] for c in item['colors']])
-                        st.write(f"Colors: {colors_str}")
+                        st.markdown(f"<span class='small-font'>Logo: {item['logo']} | Art: {item['artwork']}</span>", unsafe_allow_html=True)
+                        colors_str = ", ".join([c['name'] for c in item['colors']]) if item['colors'] else "없음"
+                        st.markdown(f"<span class='small-font'>Colors: {colors_str}</span>", unsafe_allow_html=True)
 
-            st.markdown("---")
-            if st.button("PPT 생성 및 다운로드", type="primary", use_container_width=True):
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("PPT 생성 및 다운로드", type="primary"):
                 ppt_io = create_pptx(st.session_state.product_list)
                 st.download_button("📥 .pptx 파일 저장", ppt_io, "SpecSheet_Result.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation", use_container_width=True)
 
@@ -301,14 +307,16 @@ with tab_main:
 # 탭 2: 자산 관리
 # =========================================================
 with tab_asset:
-    st.markdown("### Assets Manager")
+    st.subheader("자산 관리 (Asset Manager)")
     
     asset_type = st.radio("폴더 선택", ["Logos", "Artworks"], horizontal=True, label_visibility="collapsed")
     target_dir = LOGO_DIR if asset_type == "Logos" else ARTWORK_DIR
     
-    # 업로드 영역 (카드 스타일)
-    with st.expander("📂 파일 업로드 열기", expanded=True):
-        uploaded_files = st.file_uploader(f"{asset_type} 폴더에 추가할 파일", type=['png', 'jpg'], accept_multiple_files=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # 업로드 영역
+    with st.expander(f"➕ {asset_type} 파일 업로드", expanded=True):
+        uploaded_files = st.file_uploader(f"파일을 드래그하여 추가하세요", type=['png', 'jpg'], accept_multiple_files=True)
         if uploaded_files:
             if st.button("서버에 저장하기", use_container_width=True):
                 for uf in uploaded_files:
@@ -320,27 +328,30 @@ with tab_asset:
     
     # 갤러리 영역
     files = get_files(target_dir)
-    st.caption(f"저장된 파일: {len(files)}개")
+    st.caption(f"총 {len(files)}개의 파일이 있습니다.")
     
     if not files:
-        st.warning("파일이 없습니다.")
+        st.warning("저장된 파일이 없습니다.")
     else:
-        cols = st.columns(5) # 5열 그리드 (더 작게)
+        # 그리드 레이아웃
+        cols = st.columns(5)
         for i, file_name in enumerate(files):
             col = cols[i % 5]
             with col:
                 file_path = os.path.join(target_dir, file_name)
+                # 이미지 카드
                 st.image(file_path, use_container_width=True)
                 
-                # 작은 관리 버튼
-                with st.popover("설정", use_container_width=True):
+                # 팝오버 메뉴
+                with st.popover("관리", use_container_width=True):
                     st.caption(file_name)
                     new_name = st.text_input("이름 변경", value=file_name, key=f"ren_{file_name}")
-                    if st.button("변경", key=f"b_ren_{file_name}"):
+                    if st.button("수정", key=f"b_ren_{file_name}"):
                         s, m = rename_file(target_dir, file_name, new_name)
                         if s: st.rerun()
                         else: st.error(m)
                     
-                    if st.button("삭제", key=f"b_del_{file_name}", type="primary"):
+                    st.markdown("---")
+                    if st.button("삭제", key=f"b_del_{file_name}"):
                         delete_file(target_dir, file_name)
                         st.rerun()
