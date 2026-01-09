@@ -1,10 +1,18 @@
 import streamlit as st
+import streamlit_shadcn_ui as ui # Shadcn UI 라이브러리
 from pptx import Presentation
-from pptx.util import Inches, Pt
+from pptx.util import Mm, Pt
 from pptx.enum.text import PP_ALIGN
 import io
 import os
-from github import Github # 깃허브 연동 라이브러리
+import time
+
+# 깃허브 라이브러리 로드
+try:
+    from github import Github
+    GITHUB_AVAILABLE = True
+except ImportError:
+    GITHUB_AVAILABLE = False
 
 # --- 설정 ---
 TEMPLATE_FILE = "template.pptx"
@@ -12,66 +20,10 @@ LOGO_DIR = "assets/logos"
 ARTWORK_DIR = "assets/artworks"
 CSS_FILE = "style.css"
 
-# --- 깃허브 연동 함수 (핵심) ---
-def upload_to_github(file_obj, folder_path):
-    """
-    파일을 받아서 GitHub 레포지토리에 직접 업로드(Commit)하는 함수
-    """
-    try:
-        # Secrets에서 정보 가져오기
-        token = st.secrets["github"]["token"]
-        repo_name = st.secrets["github"]["repo_name"]
-        branch = st.secrets["github"]["branch"]
-
-        g = Github(token)
-        repo = g.get_repo(repo_name)
-        
-        # 깃허브 내의 파일 경로 (예: assets/logos/my_logo.png)
-        file_path = f"{folder_path}/{file_obj.name}"
-        
-        # 파일 내용을 바이너리로 읽기
-        content = file_obj.getvalue()
-
-        try:
-            # 이미 파일이 있는지 확인 (있으면 업데이트)
-            contents = repo.get_contents(file_path, ref=branch)
-            repo.update_file(file_path, f"Update {file_obj.name} via App", content, contents.sha, branch=branch)
-            st.toast(f"🔄 기존 파일 업데이트 완료: {file_obj.name}")
-        except:
-            # 없으면 새로 생성
-            repo.create_file(file_path, f"Upload {file_obj.name} via App", content, branch=branch)
-            st.toast(f"✅ 새 파일 업로드 완료: {file_obj.name}")
-            
-        return True
-    except Exception as e:
-        st.error(f"GitHub 업로드 실패: {str(e)}")
-        return False
-
-def delete_from_github(filename, folder_path):
-    """GitHub에서 파일 삭제"""
-    try:
-        token = st.secrets["github"]["token"]
-        repo_name = st.secrets["github"]["repo_name"]
-        branch = st.secrets["github"]["branch"]
-
-        g = Github(token)
-        repo = g.get_repo(repo_name)
-        
-        file_path = f"{folder_path}/{filename}"
-        contents = repo.get_contents(file_path, ref=branch)
-        repo.delete_file(file_path, f"Delete {filename} via App", contents.sha, branch=branch)
-        st.toast(f"🗑️ 삭제 완료: {filename}")
-        return True
-    except Exception as e:
-        st.error(f"삭제 실패: {str(e)}")
-        return False
-
-# --- 기타 유틸리티 ---
+# --- 유틸리티 함수 ---
 def init_folders():
-    # 로컬에도 폴더는 있어야 에러가 안 남 (Streamlit이 Repo를 클론해오므로 기본적으로 있음)
     for folder in [LOGO_DIR, ARTWORK_DIR]:
-        if not os.path.exists(folder):
-            os.makedirs(folder)
+        if not os.path.exists(folder): os.makedirs(folder)
 
 def load_css(file_name):
     if os.path.exists(file_name):
@@ -82,53 +34,87 @@ def get_files(folder_path):
     if not os.path.exists(folder_path): return []
     return [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
-# --- PPT 생성 로직 (동일) ---
+# --- 깃허브 연동 함수 (이전과 동일) ---
+def get_github_repo():
+    if not GITHUB_AVAILABLE: return None
+    try:
+        return Github(st.secrets["github"]["token"]).get_repo(st.secrets["github"]["repo_name"])
+    except: return None
+
+def upload_file(file_obj, folder_path):
+    # 1. 로컬 저장
+    with open(os.path.join(folder_path, file_obj.name), "wb") as f:
+        f.write(file_obj.getbuffer())
+    # 2. 깃허브 저장
+    repo = get_github_repo()
+    if repo:
+        try:
+            path = f"{folder_path}/{file_obj.name}"
+            content = file_obj.getvalue()
+            branch = st.secrets["github"].get("branch", "main")
+            try:
+                contents = repo.get_contents(path, ref=branch)
+                repo.update_file(path, f"Update {file_obj.name}", content, contents.sha, branch=branch)
+            except:
+                repo.create_file(path, f"Upload {file_obj.name}", content, branch=branch)
+            return True
+        except: return False
+    return True
+
+def delete_file_asset(filename, folder_path):
+    local = os.path.join(folder_path, filename)
+    if os.path.exists(local): os.remove(local)
+    repo = get_github_repo()
+    if repo:
+        try:
+            path = f"{folder_path}/{filename}"
+            branch = st.secrets["github"].get("branch", "main")
+            contents = repo.get_contents(path, ref=branch)
+            repo.delete_file(path, f"Delete {filename}", contents.sha, branch=branch)
+        except: pass
+
+# --- PPT 생성 로직 (MM 단위) ---
 def create_pptx(products):
     if os.path.exists(TEMPLATE_FILE): prs = Presentation(TEMPLATE_FILE)
     else: prs = Presentation()
 
     for data in products:
-        try: slide_layout = prs.slide_layouts[1] 
-        except: slide_layout = prs.slide_layouts[0]
-        slide = prs.slides.add_slide(slide_layout)
+        try: slide = prs.slides.add_slide(prs.slide_layouts[1])
+        except: slide = prs.slides.add_slide(prs.slide_layouts[0])
 
-        # 텍스트
-        textbox = slide.shapes.add_textbox(Inches(0.5), Inches(0.8), Inches(5), Inches(1))
-        p = textbox.text_frame.paragraphs[0]
-        p.text = f"{data['name']}\n{data['code']}"
-        p.font.size = Pt(24)
-        p.font.bold = True
+        # Text
+        tb = slide.shapes.add_textbox(Mm(15), Mm(15), Mm(130), Mm(30))
+        tb.text_frame.text = f"{data['name']}\n{data['code']}"
+        tb.text_frame.paragraphs[0].font.size = Pt(24)
+        tb.text_frame.paragraphs[0].font.bold = True
         
-        rrp_box = slide.shapes.add_textbox(Inches(7.5), Inches(0.8), Inches(2), Inches(0.5))
-        rrp_box.text_frame.text = f"RRP : {data['rrp']}"
-        rrp_box.text_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
+        rrp = slide.shapes.add_textbox(Mm(250), Mm(15), Mm(50), Mm(15))
+        rrp.text_frame.text = f"RRP : {data['rrp']}"
+        rrp.text_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
 
-        # 이미지 배치
+        # Images
         if data['main_image']:
-            slide.shapes.add_picture(data['main_image'], left=Inches(1.0), top=Inches(2.5), width=Inches(4.5))
+            slide.shapes.add_picture(data['main_image'], left=Mm(20), top=Mm(60), width=Mm(140))
         
-        # 로고 (assets 폴더에서 찾기)
         if data['logo'] and data['logo'] != "선택 없음":
             p_logo = os.path.join(LOGO_DIR, data['logo'])
-            if os.path.exists(p_logo): 
-                slide.shapes.add_picture(p_logo, left=Inches(6.0), top=Inches(2.0), width=Inches(1.5))
+            if os.path.exists(p_logo):
+                slide.shapes.add_picture(p_logo, left=Mm(180), top=Mm(60), width=Mm(40))
         
-        # 아트워크
         if data['artwork'] and data['artwork'] != "선택 없음":
             p_art = os.path.join(ARTWORK_DIR, data['artwork'])
-            if os.path.exists(p_art): 
-                slide.shapes.add_picture(p_art, left=Inches(6.0), top=Inches(3.8), width=Inches(1.5))
+            if os.path.exists(p_art):
+                slide.shapes.add_picture(p_art, left=Mm(180), top=Mm(110), width=Mm(40))
 
-        # 컬러웨이
-        sx, sy, w, g = 6.0, 6.0, 1.2, 0.3
+        # Colors
+        sx, sy, w, g = 180, 155, 30, 5
         for i, c in enumerate(data['colors']):
             cx = sx + (i * (w + g))
-            if c['img']: slide.shapes.add_picture(c['img'], left=Inches(cx), top=Inches(sy), width=Inches(w))
-            tb = slide.shapes.add_textbox(Inches(cx), Inches(sy + 1.3), Inches(w), Inches(0.4))
-            p = tb.text_frame.paragraphs[0]
-            p.text = c['name']
-            p.font.size = Pt(9)
-            p.alignment = PP_ALIGN.CENTER
+            if c['img']: slide.shapes.add_picture(c['img'], left=Mm(cx), top=Mm(sy), width=Mm(w))
+            tb = slide.shapes.add_textbox(Mm(cx), Mm(sy+32), Mm(w), Mm(10))
+            tb.text_frame.text = c['name']
+            tb.text_frame.paragraphs[0].font.size = Pt(9)
+            tb.text_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
             
     output = io.BytesIO()
     prs.save(output)
@@ -136,7 +122,7 @@ def create_pptx(products):
     return output
 
 # =========================================================
-# APP MAIN
+# APP MAIN (Shadcn UI Version)
 # =========================================================
 st.set_page_config(page_title="BOSS Admin", layout="wide", initial_sidebar_state="expanded")
 init_folders()
@@ -148,136 +134,160 @@ if 'product_list' not in st.session_state:
 # --- 사이드바 ---
 with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Hugo_Boss_logo.svg/2560px-Hugo_Boss_logo.svg.png", width=120)
-    st.markdown("<div style='margin-bottom: 30px;'></div>", unsafe_allow_html=True)
-    menu = st.radio("MENU", ["홈 (Dashboard)", "스펙 시트 제작", "자산 관리"], label_visibility="collapsed")
-
-# --- 콘텐츠 영역 ---
-
-# 1. 홈
-if "홈" in menu:
-    st.title("Dashboard")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown(f"""
-        <div class="content-card">
-            <h3>대기 목록</h3>
-            <h2 style="color:var(--toss-blue);">{len(st.session_state.product_list)}건</h2>
-        </div>""", unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"""
-        <div class="content-card">
-            <h3>등록된 로고</h3>
-            <h2 style="color:var(--toss-blue);">{len(get_files(LOGO_DIR))}개</h2>
-        </div>""", unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"""
-        <div class="content-card">
-            <h3>등록된 아트워크</h3>
-            <h2 style="color:var(--toss-blue);">{len(get_files(ARTWORK_DIR))}개</h2>
-        </div>""", unsafe_allow_html=True)
-
-# 2. 제작
-elif "스펙" in menu:
-    st.title("Spec Sheet Maker")
-    st.markdown('<div class="content-card">', unsafe_allow_html=True)
-    col_input, col_queue = st.columns([1, 1.2], gap="large")
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    with col_input:
-        st.subheader("제품 정보 입력")
-        with st.form("main_form", clear_on_submit=True):
-            st.caption("Basic Info")
-            name = st.text_input("제품명", "MEN'S T-SHIRTS")
-            code = st.text_input("품번 (필수)", placeholder="예: BKFTM1581")
-            rrp = st.text_input("가격", "Undecided")
-            
-            st.caption("Design Resource")
-            img = st.file_uploader("메인 이미지", type=['png','jpg'])
-            # 파일 목록은 로컬 폴더(레포가 클론된 폴더)에서 읽어옴
-            l_opt = ["선택 없음"] + get_files(LOGO_DIR)
-            a_opt = ["선택 없음"] + get_files(ARTWORK_DIR)
-            c1, c2 = st.columns(2)
-            with c1: sl = st.selectbox("로고", l_opt)
-            with c2: sa = st.selectbox("아트워크", a_opt)
-            
-            st.caption("Colorways (Max 3)")
-            colors = []
-            for i in range(3):
-                cc1, cc2 = st.columns([1,2])
-                with cc1: ci = st.file_uploader(f"img_{i}", type=['png','jpg'], key=f"c{i}", label_visibility="collapsed")
-                with cc2: cn = st.text_input(f"nm_{i}", placeholder="색상명", key=f"n{i}", label_visibility="collapsed")
-                if ci and cn: colors.append({"img":ci, "name":cn})
-                st.write("")
-            
-            if st.form_submit_button("리스트 추가"):
-                if not code or not img: st.error("품번과 이미지는 필수입니다.")
-                else:
-                    st.session_state.product_list.append({
-                        "name":name, "code":code, "rrp":rrp, "main_image":img, 
-                        "logo":sl, "artwork":sa, "colors":colors
-                    })
-                    st.success("추가됨")
+    # Shadcn 스타일의 Badges
+    ui.badges(content="Admin Workspace", variant="secondary")
+    
+    st.markdown("---")
+    
+    # 네비게이션을 위한 Radio (기존 방식 유지하되 깔끔하게)
+    menu = st.radio("MENU", ["Dashboard", "Spec Maker", "Assets"], label_visibility="collapsed")
+    
+    st.markdown("---")
+    if get_github_repo():
+        st.caption("🟢 GitHub Connected")
+    else:
+        st.caption("⚪ Local Mode")
 
-    with col_queue:
-        st.subheader(f"대기 목록 ({len(st.session_state.product_list)})")
-        if st.button("목록 초기화"):
-            st.session_state.product_list = []
-            st.rerun()
-            
+# --- 메인 콘텐츠 ---
+
+# 1. 대시보드
+if menu == "Dashboard":
+    st.title("Dashboard")
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Shadcn Metric Cards (가장 큰 시각적 변화)
+    cols = st.columns(3)
+    with cols[0]:
+        ui.metric_card(title="Pending Specs", content=f"{len(st.session_state.product_list)}", description="Items in Queue", key="card1")
+    with cols[1]:
+        ui.metric_card(title="Logos", content=f"{len(get_files(LOGO_DIR))}", description="Available Assets", key="card2")
+    with cols[2]:
+        ui.metric_card(title="Artworks", content=f"{len(get_files(ARTWORK_DIR))}", description="Available Assets", key="card3")
+
+    st.markdown("---")
+    st.info("좌측 메뉴에서 작업을 선택하세요.")
+
+# 2. 스펙 시트 제작
+elif menu == "Spec Maker":
+    st.title("Spec Sheet Maker")
+    
+    # Shadcn Tabs (입력과 목록을 탭으로 분리)
+    # 탭으로 분리하면 공간 활용이 훨씬 좋습니다.
+    tab_form, tab_list = st.tabs(["📝 Input Form", "📋 Queue & Export"])
+    
+    with tab_form:
+        # 입력 폼을 카드 안에 넣어서 정리
+        with st.container():
+            st.markdown("#### Product Details")
+            with st.form("spec_form", clear_on_submit=True):
+                c1, c2 = st.columns([2, 1])
+                with c1:
+                    prod_name = st.text_input("Product Name", "MEN'S T-SHIRTS")
+                    prod_code = st.text_input("Product Code", placeholder="e.g. BKFTM1581")
+                with c2:
+                    prod_rrp = st.text_input("RRP", "Undecided")
+                
+                st.markdown("#### Assets")
+                c3, c4, c5 = st.columns([2, 1, 1])
+                with c3:
+                    main_img = st.file_uploader("Main Image", type=['png', 'jpg'])
+                with c4:
+                    # 파일 목록 로드
+                    sel_logo = st.selectbox("Logo", ["선택 없음"] + get_files(LOGO_DIR))
+                with c5:
+                    sel_art = st.selectbox("Artwork", ["선택 없음"] + get_files(ARTWORK_DIR))
+                
+                st.markdown("#### Colorways")
+                colors = []
+                for i in range(3):
+                    cc1, cc2 = st.columns([1, 2])
+                    with cc1: ci = st.file_uploader(f"Image {i+1}", type=['png', 'jpg'], key=f"ci{i}")
+                    with cc2: cn = st.text_input(f"Name {i+1}", key=f"cn{i}")
+                    if ci and cn: colors.append({"img": ci, "name": cn})
+                    st.markdown("<div style='margin-bottom:10px'></div>", unsafe_allow_html=True)
+                
+                # 폼 제출 버튼
+                if st.form_submit_button("Add to Queue", type="primary"):
+                    if not prod_code or not main_img:
+                        st.error("Code & Main Image are required.")
+                    else:
+                        st.session_state.product_list.append({
+                            "name": prod_name, "code": prod_code, "rrp": prod_rrp,
+                            "main_image": main_img, "logo": sel_logo, "artwork": sel_art,
+                            "colors": colors
+                        })
+                        st.success(f"Added: {prod_code}")
+
+    with tab_list:
+        st.markdown(f"#### Generated Queue ({len(st.session_state.product_list)})")
+        
+        col_act1, col_act2 = st.columns([1, 4])
+        with col_act1:
+            if ui.button("Clear List", variant="outline", key="clear_btn"):
+                st.session_state.product_list = []
+                st.rerun()
+        
+        st.markdown("---")
+        
         if not st.session_state.product_list:
-            st.info("좌측에서 정보를 입력하세요.")
+            st.info("No items in queue.")
         else:
+            # 리스트 보여주기
             for idx, item in enumerate(st.session_state.product_list):
+                # ui.card는 컨테이너 기능이 약하므로 expander 사용
                 with st.expander(f"{idx+1}. {item['code']} - {item['name']}"):
-                    st.caption(f"Colors: {len(item['colors'])}개 | Logo: {item['logo']}")
+                    c_img, c_info = st.columns([1, 5])
+                    with c_img: st.image(item['main_image'])
+                    with c_info: st.write(f"Colors: {len(item['colors'])} | Logo: {item['logo']}")
             
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("PPT 생성하기", type="primary"):
-                ppt = create_pptx(st.session_state.product_list)
-                st.download_button("다운로드", ppt, "Result.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
-    st.markdown('</div>', unsafe_allow_html=True)
+            # 다운로드 버튼
+            if st.button("🚀 Generate PPT", type="primary"):
+                with st.spinner("Processing..."):
+                    ppt = create_pptx(st.session_state.product_list)
+                st.success("Done!")
+                st.download_button("Download .pptx", ppt, "Result.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
 
-# 3. 자산 (깃허브 연동)
-elif "자산" in menu:
-    st.title("Asset Manager (GitHub Sync)")
-    st.info("여기서 파일을 업로드하면 GitHub 저장소에 자동 저장되어 영구적으로 보관됩니다.")
+# 3. 자산 관리
+elif menu == "Assets":
+    st.title("Asset Manager")
     
-    st.markdown('<div class="content-card">', unsafe_allow_html=True)
-    c_sel, c_up = st.columns([1, 2])
-    with c_sel:
-        atype = st.radio("유형", ["Logos", "Artworks"])
-        # 저장할 폴더 경로
-        tdir = LOGO_DIR if atype == "Logos" else ARTWORK_DIR
-    with c_up:
-        upl = st.file_uploader("파일 업로드 (GitHub로 전송)", type=['png','jpg'], accept_multiple_files=True)
-        if upl and st.button("저장하기"):
-            with st.spinner("GitHub로 전송 중... (완료 후 앱이 새로고침 됩니다)"):
-                success_count = 0
-                for f in upl:
-                    if upload_to_github(f, tdir):
-                        success_count += 1
-                
-                if success_count > 0:
-                    st.success(f"{success_count}개 파일 업로드 성공! 잠시 후 반영됩니다.")
-                    # GitHub에 커밋하면 Streamlit Cloud가 알아서 감지하고 앱을 리부팅합니다.
-                    # 따라서 수동 rerun이 필요 없을 수도 있지만, UX상 넣어줍니다.
-                    import time
-                    time.sleep(2)
+    # Shadcn Tabs 사용
+    active_tab = ui.tabs(options=['Logos', 'Artworks'], defaultValue='Logos', key="asset_tabs")
+    
+    target_dir = LOGO_DIR if active_tab == 'Logos' else ARTWORK_DIR
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # 업로드 섹션
+    with st.expander("📤 Upload New Files", expanded=True):
+        uploaded = st.file_uploader(f"Upload to {active_tab}", type=['png', 'jpg'], accept_multiple_files=True)
+        if uploaded and st.button("Save to GitHub"):
+            with st.spinner("Uploading..."):
+                cnt = 0
+                for f in uploaded:
+                    if upload_file(f, target_dir): cnt += 1
+                if cnt:
+                    st.success(f"{cnt} files saved.")
+                    time.sleep(1)
                     st.rerun()
-            
+
     st.markdown("---")
-    fs = get_files(tdir)
-    if not fs: st.warning("파일 없음")
+    
+    # 갤러리 섹션
+    files = get_files(target_dir)
+    if not files:
+        st.info("No files found.")
     else:
-        st.subheader(f"보유 파일 목록 ({len(fs)}개)")
         cols = st.columns(5)
-        for i, f in enumerate(fs):
+        for i, f in enumerate(files):
             with cols[i%5]:
-                st.image(os.path.join(tdir, f), use_container_width=True)
+                st.image(os.path.join(target_dir, f), use_container_width=True)
+                # Shadcn 스타일의 작은 버튼은 없어서 native 버튼 사용하되 작게
+                if st.button("Delete", key=f"del_{f}"):
+                    delete_file_asset(f, target_dir)
+                    time.sleep(1)
+                    st.rerun()
                 st.caption(f)
-                if st.button("영구 삭제", key=f"d_{f}"):
-                    if delete_from_github(f, tdir):
-                        st.warning("삭제됨. 잠시 후 반영됩니다.")
-                        import time
-                        time.sleep(2)
-                        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)

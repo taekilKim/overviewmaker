@@ -1,183 +1,40 @@
-/* =================================================================
-   1. TDS Variables (디자인 토큰 정의)
-   - 색상, 폰트, Radius 등을 여기서 한 번에 관리합니다.
-   ================================================================= */
-:root {
-    /* Colors */
-    --toss-blue: #3182F6;
-    --toss-blue-dark: #1B64DA;
-    --toss-bg-grey: #F2F4F6;
-    --toss-input-bg: #FFFFFF;
-    --toss-border: #E5E8EB;
-    
-    /* Text Colors */
-    --text-black: #191F28;
-    --text-dark-grey: #333D4B;
-    --text-grey: #4E5968;
-    --text-light-grey: #8B95A1;
-
-    /* Radius & Spacing */
-    --radius-md: 8px;
-    --radius-lg: 16px;
-    --shadow-sm: 0 2px 8px rgba(0,0,0,0.03);
-    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.05);
-}
-
-/* =================================================================
-   2. Global Reset & Font (강제 초기화)
-   ================================================================= */
+/* style.css */
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 
-* {
-    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif !important;
-    box-sizing: border-box;
+/* 1. 기본 폰트 & 배경 설정 */
+.stApp {
+    font-family: 'Pretendard', sans-serif !important;
+    background-color: #F8FAFC; /* 아주 연한 쿨그레이 (Shadcn 느낌) */
 }
 
-html, body, .stApp {
-    background-color: var(--toss-bg-grey) !important;
-    color: var(--text-black) !important;
-}
-
-/* Streamlit 기본 헤더, 툴바, 푸터, 햄버거 메뉴 완전 제거 */
+/* 2. Streamlit 툴바/헤더/푸터 숨김 (필수) */
 header[data-testid="stHeader"],
 div[data-testid="stToolbar"],
 footer {
     display: none !important;
     visibility: hidden !important;
-    height: 0 !important;
 }
 
-/* 상단 여백 강제 제거 (Reset) */
+/* 3. 레이아웃 여백 초기화 */
 .block-container {
     padding-top: 2rem !important;
     padding-bottom: 3rem !important;
     max-width: 100% !important;
 }
 
-/* =================================================================
-   3. Sidebar (좌측 메뉴) 스타일링
-   ================================================================= */
+/* 4. 사이드바 스타일 보정 */
 section[data-testid="stSidebar"] {
-    background-color: #FFFFFF !important;
-    border-right: 1px solid var(--toss-border) !important;
-    box-shadow: none !important;
-    width: 260px !important;
-}
-
-section[data-testid="stSidebar"] .block-container {
-    padding: 2rem 1rem !important;
-}
-
-/* 라디오 버튼을 메뉴 리스트처럼 변형 */
-div[data-testid="stRadio"] > label { display: none; } /* 라벨 숨김 */
-
-div[data-testid="stRadio"] div[role="radiogroup"] > label {
-    background-color: transparent !important;
-    border: none !important;
-    padding: 12px 16px !important;
-    margin-bottom: 4px !important;
-    border-radius: var(--radius-md) !important;
-    transition: all 0.2s ease;
-    color: var(--text-grey) !important;
-}
-
-div[data-testid="stRadio"] div[role="radiogroup"] > label:hover {
-    background-color: var(--toss-bg-grey) !important;
-    color: var(--text-dark-grey) !important;
-}
-
-/* 선택된 메뉴 스타일 */
-div[data-testid="stRadio"] div[role="radiogroup"] > label[data-checked="true"] {
-    background-color: #E8F3FF !important; /* 연한 블루 */
-}
-
-div[data-testid="stRadio"] div[role="radiogroup"] > label[data-checked="true"] p {
-    color: var(--toss-blue) !important;
-    font-weight: 700 !important;
-}
-
-/* =================================================================
-   4. Components Reset (입력창, 버튼 등)
-   ================================================================= */
-
-/* 카드 박스 (커스텀 클래스) */
-.content-card {
     background-color: #FFFFFF;
-    border-radius: var(--radius-lg);
-    padding: 32px;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--toss-border);
-    margin-bottom: 24px;
+    border-right: 1px solid #E2E8F0; /* 연한 보더 */
 }
 
-/* Input Fields (Text, Selectbox, FileUploader) */
-.stTextInput input, 
-.stSelectbox div[data-baseweb="select"] > div, 
-.stFileUploader section {
-    background-color: var(--toss-input-bg) !important;
-    border: 1px solid var(--toss-border) !important;
-    border-radius: var(--radius-md) !important;
-    color: var(--text-dark-grey) !important;
-    font-size: 15px !important;
-    box-shadow: none !important;
+/* 5. 네이티브 입력창들이 Shadcn과 어울리도록 미세 조정 */
+.stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
+    border-radius: 6px !important; /* Shadcn 스타일 R값 */
+    border: 1px solid #E2E8F0 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
 }
-
-/* Input Focus State */
-.stTextInput input:focus, 
-.stSelectbox div[data-baseweb="select"] > div:focus-within {
-    border-color: var(--toss-blue) !important;
-    box-shadow: 0 0 0 1px var(--toss-blue) !important;
-}
-
-/* Buttons (Primary) */
-div.stButton > button {
-    background-color: var(--toss-blue) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: var(--radius-md) !important;
-    padding: 0.6rem 1rem !important;
-    font-weight: 600 !important;
-    font-size: 15px !important;
-    box-shadow: 0 2px 6px rgba(49, 130, 246, 0.15) !important;
-    transition: all 0.2s ease !important;
-    width: 100%;
-}
-
-div.stButton > button:hover {
-    background-color: var(--toss-blue-dark) !important;
-    transform: translateY(-1px);
-}
-
-div.stButton > button:active {
-    transform: scale(0.98);
-}
-
-/* Secondary Button (비워두기 등 - 특정 키워드 감지 불가하므로 UI 배치로 해결하거나 별도 CSS 해킹 필요) 
-   여기서는 기본 버튼 스타일을 파란색으로 통일 */
-
-/* Expander (Accordion) Reset */
-div[data-testid="stExpander"] {
-    border: 1px solid var(--toss-border) !important;
-    border-radius: var(--radius-md) !important;
-    background-color: #FFFFFF !important;
-    box-shadow: none !important;
-}
-.streamlit-expanderHeader {
-    font-weight: 600 !important;
-    color: var(--text-dark-grey) !important;
-    background-color: transparent !important;
-}
-
-/* =================================================================
-   5. Typography Override
-   ================================================================= */
-h1 { font-size: 26px !important; font-weight: 700 !important; color: var(--text-black) !important; letter-spacing: -0.5px !important; }
-h2 { font-size: 22px !important; font-weight: 700 !important; color: var(--text-dark-grey) !important; }
-h3 { font-size: 18px !important; font-weight: 600 !important; color: var(--text-dark-grey) !important; }
-p, label, span { color: var(--text-grey) !important; }
-.caption { color: var(--text-light-grey) !important; font-size: 13px !important; }
-
-/* 이미지 캡션 제거 또는 스타일링 */
-div[data-testid="stImage"] > div > div > div {
-    color: var(--text-light-grey) !important;
+.stTextInput input:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within {
+    border-color: #000000 !important; /* 포커스시 블랙 */
+    box-shadow: 0 0 0 1px #000000 !important;
 }
