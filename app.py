@@ -4,6 +4,7 @@ from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
 import io
 import os
+import shutil # 파일 이동/이름변경용
 
 # --- 설정 ---
 TEMPLATE_FILE = "template.pptx"
@@ -21,11 +22,38 @@ def get_files(folder_path):
         return []
     return [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
-# 세션 상태 초기화 (새로고침 해도 리스트 유지)
+# --- 세션 상태 초기화 ---
 if 'product_list' not in st.session_state:
     st.session_state.product_list = []
 
-# --- PPT 생성 로직 ---
+# --- 기능 로직: 파일 관리 ---
+def save_uploaded_file(uploaded_file, folder):
+    file_path = os.path.join(folder, uploaded_file.name)
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+
+def delete_file(folder, filename):
+    file_path = os.path.join(folder, filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+def rename_file(folder, old_name, new_name):
+    old_path = os.path.join(folder, old_name)
+    
+    # 확장자 유지
+    ext = os.path.splitext(old_name)[1]
+    if not new_name.endswith(ext):
+        new_name += ext
+        
+    new_path = os.path.join(folder, new_name)
+    
+    if os.path.exists(new_path):
+        return False, "이미 같은 이름의 파일이 존재합니다."
+    
+    os.rename(old_path, new_path)
+    return True, "성공"
+
+# --- 기능 로직: PPT 생성 ---
 def create_pptx(products):
     if os.path.exists(TEMPLATE_FILE):
         prs = Presentation(TEMPLATE_FILE)
@@ -33,7 +61,6 @@ def create_pptx(products):
         prs = Presentation()
 
     for data in products:
-        # 슬라이드 마스터의 1번 레이아웃(본문용) 사용 시도
         try:
             slide_layout = prs.slide_layouts[1] 
         except:
@@ -42,33 +69,31 @@ def create_pptx(products):
         slide = prs.slides.add_slide(slide_layout)
 
         # 1. 텍스트 정보
-        # 제목 (좌측 상단)
         textbox = slide.shapes.add_textbox(Inches(0.5), Inches(0.8), Inches(5), Inches(1))
         p = textbox.text_frame.paragraphs[0]
         p.text = f"{data['name']}\n{data['code']}"
         p.font.size = Pt(24)
         p.font.bold = True
         
-        # 가격 (우측 상단)
         rrp_box = slide.shapes.add_textbox(Inches(7.5), Inches(0.8), Inches(2), Inches(0.5))
         rrp_box.text_frame.text = f"RRP : {data['rrp']}"
         rrp_box.text_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
 
-        # 2. 메인 이미지
+        # 2. 이미지 배치
         if data['main_image']:
             slide.shapes.add_picture(data['main_image'], left=Inches(1.0), top=Inches(2.5), width=Inches(4.5))
 
-        # 3. 로고 (우측 박스)
         if data['logo'] and data['logo'] != "선택 없음":
             logo_path = os.path.join(LOGO_DIR, data['logo'])
-            slide.shapes.add_picture(logo_path, left=Inches(6.0), top=Inches(2.0), width=Inches(1.5))
+            if os.path.exists(logo_path):
+                slide.shapes.add_picture(logo_path, left=Inches(6.0), top=Inches(2.0), width=Inches(1.5))
 
-        # 4. 아트워크 (로고 아래 배치 예시)
         if data['artwork'] and data['artwork'] != "선택 없음":
             art_path = os.path.join(ARTWORK_DIR, data['artwork'])
-            slide.shapes.add_picture(art_path, left=Inches(6.0), top=Inches(3.8), width=Inches(1.5))
+            if os.path.exists(art_path):
+                slide.shapes.add_picture(art_path, left=Inches(6.0), top=Inches(3.8), width=Inches(1.5))
 
-        # 5. 컬러웨이 (하단)
+        # 3. 컬러웨이
         start_x = 6.0
         start_y = 6.0
         img_width = 1.2
@@ -90,126 +115,143 @@ def create_pptx(products):
     output.seek(0)
     return output
 
-# --- UI 시작 ---
-st.set_page_config(page_title="BOSS Spec Sheet Maker (Multi)", layout="wide")
+# =========================================================
+# 메인 어플리케이션 시작
+# =========================================================
+st.set_page_config(page_title="BOSS Spec Sheet Maker", layout="wide")
 init_folders()
 
-st.title("👕 BOSS 의류 스펙 시트 생성기 (멀티 페이지)")
+st.title("👕 BOSS 의류 스펙 시트 생성기")
 
-# ==========================================
-# 1. 사이드바: 자산 관리 및 입력 폼
-# ==========================================
-with st.sidebar:
-    # [A] 자산 업로드 기능
-    st.markdown("### 📂 자산 관리 (Assets)")
-    with st.expander("로고/아트워크 업로드"):
-        upload_type = st.radio("업로드 유형", ["Logos", "Artworks"])
-        uploaded_asset = st.file_uploader("파일 선택", type=['png', 'jpg'])
-        if uploaded_asset and st.button("파일 저장하기"):
-            target_dir = LOGO_DIR if upload_type == "Logos" else ARTWORK_DIR
-            save_path = os.path.join(target_dir, uploaded_asset.name)
-            with open(save_path, "wb") as f:
-                f.write(uploaded_asset.getbuffer())
-            st.success(f"{uploaded_asset.name} 저장 완료!")
-            st.rerun() # 새로고침해서 목록 갱신
+# 상단 탭 네비게이션 생성
+tab_main, tab_asset = st.tabs(["🛠️ PPT 제작 (Generator)", "📂 자산 관리 (Asset Manager)"])
 
-    st.markdown("---")
+# =========================================================
+# 탭 1: PPT 제작 (기존 기능)
+# =========================================================
+with tab_main:
+    col_input, col_list = st.columns([1, 2])
     
-    # [B] 제품 정보 입력 폼
-    st.markdown("### 📝 제품 정보 입력")
-    # clear_on_submit=True를 써서 추가 후 폼을 비움
-    with st.form("add_product_form", clear_on_submit=True):
-        prod_name = st.text_input("제품명", "MEN'S T-SHIRTS")
-        prod_code = st.text_input("품번 (필수)", placeholder="예: BKFTM1581")
-        prod_rrp = st.text_input("가격 (RRP)", "Undecided")
-        
-        main_img = st.file_uploader("메인 이미지", type=['png', 'jpg', 'jpeg'])
-        
-        # 로고/아트워크 선택
-        logo_list = ["선택 없음"] + get_files(LOGO_DIR)
-        art_list = ["선택 없음"] + get_files(ARTWORK_DIR)
-        
-        sel_logo = st.selectbox("로고 선택", logo_list)
-        sel_artwork = st.selectbox("아트워크 선택", art_list)
-        
-        st.write("🎨 컬러웨이 (최대 3개)")
-        col1, col2, col3 = st.columns(3)
-        colors_data = []
-        
-        # 컬러 1
-        with col1:
-            c1_img = st.file_uploader("C1 이미지", type=['png', 'jpg'])
-            c1_name = st.text_input("C1 색상명")
-        # 컬러 2
-        with col2:
-            c2_img = st.file_uploader("C2 이미지", type=['png', 'jpg'])
-            c2_name = st.text_input("C2 색상명")
-        # 컬러 3
-        with col3:
-            c3_img = st.file_uploader("C3 이미지", type=['png', 'jpg'])
-            c3_name = st.text_input("C3 색상명")
+    # --- 좌측: 입력 폼 ---
+    with col_input:
+        st.subheader("1. 정보 입력")
+        with st.form("add_product_form", clear_on_submit=True):
+            prod_name = st.text_input("제품명", "MEN'S T-SHIRTS")
+            prod_code = st.text_input("품번 (필수)", placeholder="예: BKFTM1581")
+            prod_rrp = st.text_input("가격 (RRP)", "Undecided")
+            main_img = st.file_uploader("메인 이미지", type=['png', 'jpg', 'jpeg'])
+            
+            # 자산 폴더에서 목록 실시간 로드
+            logo_list = ["선택 없음"] + get_files(LOGO_DIR)
+            art_list = ["선택 없음"] + get_files(ARTWORK_DIR)
+            
+            sel_logo = st.selectbox("로고 프리셋", logo_list)
+            sel_artwork = st.selectbox("아트워크 프리셋", art_list)
+            
+            st.markdown("**컬러웨이 (최대 3개)**")
+            c_data = []
+            for i in range(3):
+                cc1, cc2 = st.columns([1,2])
+                with cc1:
+                    ci = st.file_uploader(f"C{i+1} 사진", type=['png','jpg'], key=f"ci_{i}")
+                with cc2:
+                    cn = st.text_input(f"C{i+1} 이름", key=f"cn_{i}")
+                if ci and cn: c_data.append({"img": ci, "name": cn})
 
-        add_btn = st.form_submit_button("➕ 리스트에 추가")
+            add_btn = st.form_submit_button("➕ 리스트에 추가")
+            
+            if add_btn:
+                if not prod_code or not main_img:
+                    st.error("품번과 메인 이미지는 필수입니다.")
+                else:
+                    new_item = {
+                        "name": prod_name, "code": prod_code, "rrp": prod_rrp,
+                        "main_image": main_img, "logo": sel_logo, "artwork": sel_artwork,
+                        "colors": c_data
+                    }
+                    st.session_state.product_list.append(new_item)
+                    st.success(f"{prod_code} 추가됨")
 
-        if add_btn:
-            if not prod_code:
-                st.error("품번은 필수입니다!")
-            elif not main_img:
-                st.error("메인 이미지를 넣어주세요!")
-            else:
-                # 컬러 데이터 정리
-                if c1_img and c1_name: colors_data.append({"img": c1_img, "name": c1_name})
-                if c2_img and c2_name: colors_data.append({"img": c2_img, "name": c2_name})
-                if c3_img and c3_name: colors_data.append({"img": c3_img, "name": c3_name})
-                
-                # 세션에 저장 (메모리에 임시 저장)
-                new_item = {
-                    "name": prod_name,
-                    "code": prod_code,
-                    "rrp": prod_rrp,
-                    "main_image": main_img,
-                    "logo": sel_logo,
-                    "artwork": sel_artwork,
-                    "colors": colors_data
-                }
-                st.session_state.product_list.append(new_item)
-                st.success(f"{prod_code} 추가됨! (현재 {len(st.session_state.product_list)}개)")
+    # --- 우측: 리스트 및 생성 ---
+    with col_list:
+        st.subheader(f"2. 생성 대기 목록 ({len(st.session_state.product_list)}개)")
+        
+        if st.button("🗑️ 목록 전체 비우기"):
+            st.session_state.product_list = []
+            st.rerun()
 
-# ==========================================
-# 2. 메인 화면: 리스트 확인 및 다운로드
-# ==========================================
-col_info, col_action = st.columns([3, 1])
-with col_info:
-    st.subheader(f"📋 생성 대기 목록 ({len(st.session_state.product_list)}개)")
-with col_action:
-    if st.button("🗑️ 목록 초기화"):
-        st.session_state.product_list = []
-        st.rerun()
+        if len(st.session_state.product_list) == 0:
+            st.info("좌측에서 정보를 입력하고 추가해주세요.")
+        else:
+            # 리스트 카드 형태로 보여주기
+            for idx, item in enumerate(st.session_state.product_list):
+                with st.container():
+                    st.markdown(f"**{idx+1}. {item['code']}** | {item['name']}")
+                    c1, c2 = st.columns([1, 6])
+                    c1.image(item['main_image'], width=60)
+                    c2.caption(f"Logo: {item['logo']} | Art: {item['artwork']} | Colors: {len(item['colors'])}개")
+                    st.divider()
 
-if len(st.session_state.product_list) == 0:
-    st.info("왼쪽 사이드바에서 제품 정보를 입력하고 '리스트에 추가' 버튼을 눌러주세요.")
-else:
-    # 리스트 보여주기
-    for idx, item in enumerate(st.session_state.product_list):
-        with st.expander(f"{idx+1}. {item['code']} - {item['name']}", expanded=False):
-            c1, c2 = st.columns([1, 4])
-            with c1:
-                st.image(item['main_image'], width=100)
-            with c2:
-                st.write(f"**Logo:** {item['logo']} | **Artwork:** {item['artwork']}")
-                st.write(f"**Colors:** {', '.join([c['name'] for c in item['colors']])}")
+            if st.button("🚀 PPT 다운로드 (All Pages)", type="primary", use_container_width=True):
+                ppt_io = create_pptx(st.session_state.product_list)
+                st.download_button("📥 .pptx 파일 저장", ppt_io, "SpecSheet.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+
+# =========================================================
+# 탭 2: 자산 관리 (새로운 기능)
+# =========================================================
+with tab_asset:
+    st.header("📂 자산 관리 매니저")
+    st.info("PPT 제작 시 선택할 수 있는 로고와 아트워크 파일을 관리합니다.")
+    
+    # 1. 폴더 선택 (라디오 버튼)
+    asset_type = st.radio("관리할 폴더 선택", ["Logos (로고)", "Artworks (아트워크)"], horizontal=True)
+    target_dir = LOGO_DIR if asset_type == "Logos (로고)" else ARTWORK_DIR
+    
+    st.divider()
+
+    # 2. 파일 업로드
+    st.subheader("📤 파일 업로드")
+    uploaded_files = st.file_uploader(f"{asset_type} 폴더에 추가할 이미지", type=['png', 'jpg'], accept_multiple_files=True)
+    if uploaded_files:
+        if st.button("서버에 저장하기"):
+            for uf in uploaded_files:
+                save_uploaded_file(uf, target_dir)
+            st.success("저장 완료!")
+            st.rerun()
 
     st.divider()
+
+    # 3. 파일 목록 및 관리 (갤러리 형태)
+    st.subheader(f"🖼️ 저장된 파일 목록 ({len(get_files(target_dir))}개)")
     
-    # 최종 생성 버튼
-    if st.button("🚀 전체 슬라이드 PPT 생성하기", type="primary", use_container_width=True):
-        with st.spinner("PPT 생성 중..."):
-            ppt_file = create_pptx(st.session_state.product_list)
-        
-        st.success("생성 완료!")
-        st.download_button(
-            label="📥 PPT 파일 다운로드 (.pptx)",
-            data=ppt_file,
-            file_name="BOSS_Collection_SpecSheet.pptx",
-            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-        )
+    files = get_files(target_dir)
+    if not files:
+        st.warning("저장된 파일이 없습니다.")
+    else:
+        # 그리드 형태로 배치 (한 줄에 4개씩)
+        cols = st.columns(4)
+        for i, file_name in enumerate(files):
+            col = cols[i % 4]
+            with col:
+                file_path = os.path.join(target_dir, file_name)
+                # (1) 미리보기 이미지
+                st.image(file_path, use_container_width=True)
+                
+                # (2) 관리 기능 (Expander 안에 숨김)
+                with st.expander(f"⚙️ {file_name}"):
+                    # 이름 변경
+                    new_name = st.text_input("새 이름", value=file_name, key=f"ren_{file_name}")
+                    if st.button("이름 변경", key=f"btn_ren_{file_name}"):
+                        if new_name != file_name:
+                            success, msg = rename_file(target_dir, file_name, new_name)
+                            if success:
+                                st.success("변경 완료!")
+                                st.rerun()
+                            else:
+                                st.error(msg)
+
+                    # 삭제 기능
+                    if st.button("🗑️ 삭제", key=f"btn_del_{file_name}", type="primary"):
+                        delete_file(target_dir, file_name)
+                        st.warning("삭제되었습니다.")
+                        st.rerun()
