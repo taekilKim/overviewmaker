@@ -34,7 +34,7 @@ def get_files(folder_path):
     if not os.path.exists(folder_path): return []
     return [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
-# --- 깃허브 연동 함수 (이전과 동일) ---
+# --- 깃허브 연동 함수 ---
 def get_github_repo():
     if not GITHUB_AVAILABLE: return None
     try:
@@ -136,12 +136,11 @@ with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Hugo_Boss_logo.svg/2560px-Hugo_Boss_logo.svg.png", width=120)
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Shadcn 스타일의 Badges
-    ui.badges(content="Admin Workspace", variant="secondary")
+    # [수정됨] Shadcn UI Badges 사용법 수정
+    ui.badges(badge_list=[("Admin Workspace", "secondary")], key="admin_badge")
     
     st.markdown("---")
     
-    # 네비게이션을 위한 Radio (기존 방식 유지하되 깔끔하게)
     menu = st.radio("MENU", ["Dashboard", "Spec Maker", "Assets"], label_visibility="collapsed")
     
     st.markdown("---")
@@ -157,7 +156,6 @@ if menu == "Dashboard":
     st.title("Dashboard")
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Shadcn Metric Cards (가장 큰 시각적 변화)
     cols = st.columns(3)
     with cols[0]:
         ui.metric_card(title="Pending Specs", content=f"{len(st.session_state.product_list)}", description="Items in Queue", key="card1")
@@ -173,12 +171,9 @@ if menu == "Dashboard":
 elif menu == "Spec Maker":
     st.title("Spec Sheet Maker")
     
-    # Shadcn Tabs (입력과 목록을 탭으로 분리)
-    # 탭으로 분리하면 공간 활용이 훨씬 좋습니다.
     tab_form, tab_list = st.tabs(["📝 Input Form", "📋 Queue & Export"])
     
     with tab_form:
-        # 입력 폼을 카드 안에 넣어서 정리
         with st.container():
             st.markdown("#### Product Details")
             with st.form("spec_form", clear_on_submit=True):
@@ -194,7 +189,6 @@ elif menu == "Spec Maker":
                 with c3:
                     main_img = st.file_uploader("Main Image", type=['png', 'jpg'])
                 with c4:
-                    # 파일 목록 로드
                     sel_logo = st.selectbox("Logo", ["선택 없음"] + get_files(LOGO_DIR))
                 with c5:
                     sel_art = st.selectbox("Artwork", ["선택 없음"] + get_files(ARTWORK_DIR))
@@ -208,7 +202,6 @@ elif menu == "Spec Maker":
                     if ci and cn: colors.append({"img": ci, "name": cn})
                     st.markdown("<div style='margin-bottom:10px'></div>", unsafe_allow_html=True)
                 
-                # 폼 제출 버튼
                 if st.form_submit_button("Add to Queue", type="primary"):
                     if not prod_code or not main_img:
                         st.error("Code & Main Image are required.")
@@ -234,16 +227,13 @@ elif menu == "Spec Maker":
         if not st.session_state.product_list:
             st.info("No items in queue.")
         else:
-            # 리스트 보여주기
             for idx, item in enumerate(st.session_state.product_list):
-                # ui.card는 컨테이너 기능이 약하므로 expander 사용
                 with st.expander(f"{idx+1}. {item['code']} - {item['name']}"):
                     c_img, c_info = st.columns([1, 5])
                     with c_img: st.image(item['main_image'])
                     with c_info: st.write(f"Colors: {len(item['colors'])} | Logo: {item['logo']}")
             
             st.markdown("<br>", unsafe_allow_html=True)
-            # 다운로드 버튼
             if st.button("🚀 Generate PPT", type="primary"):
                 with st.spinner("Processing..."):
                     ppt = create_pptx(st.session_state.product_list)
@@ -254,14 +244,11 @@ elif menu == "Spec Maker":
 elif menu == "Assets":
     st.title("Asset Manager")
     
-    # Shadcn Tabs 사용
     active_tab = ui.tabs(options=['Logos', 'Artworks'], defaultValue='Logos', key="asset_tabs")
-    
     target_dir = LOGO_DIR if active_tab == 'Logos' else ARTWORK_DIR
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # 업로드 섹션
     with st.expander("📤 Upload New Files", expanded=True):
         uploaded = st.file_uploader(f"Upload to {active_tab}", type=['png', 'jpg'], accept_multiple_files=True)
         if uploaded and st.button("Save to GitHub"):
@@ -276,7 +263,6 @@ elif menu == "Assets":
 
     st.markdown("---")
     
-    # 갤러리 섹션
     files = get_files(target_dir)
     if not files:
         st.info("No files found.")
@@ -285,7 +271,6 @@ elif menu == "Assets":
         for i, f in enumerate(files):
             with cols[i%5]:
                 st.image(os.path.join(target_dir, f), use_container_width=True)
-                # Shadcn 스타일의 작은 버튼은 없어서 native 버튼 사용하되 작게
                 if st.button("Delete", key=f"del_{f}"):
                     delete_file_asset(f, target_dir)
                     time.sleep(1)
