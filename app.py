@@ -1,6 +1,6 @@
 import streamlit as st
 import streamlit_shadcn_ui as ui
-import streamlit_antd_components as sac # [NEW] 전문적인 사이드바 메뉴용
+import streamlit_antd_components as sac
 from pptx import Presentation
 from pptx.util import Mm, Pt
 from pptx.enum.text import PP_ALIGN
@@ -87,7 +87,7 @@ def create_pptx(products):
         tb.text_frame.text = f"{data['name']}\n{data['code']}"
         tb.text_frame.paragraphs[0].font.size = Pt(24)
         tb.text_frame.paragraphs[0].font.bold = True
-        try: tb.text_frame.paragraphs[0].font.name = 'Inter' # 디자인에 맞게 Inter로 변경
+        try: tb.text_frame.paragraphs[0].font.name = 'Inter'
         except: pass
         
         rrp = slide.shapes.add_textbox(Mm(250), Mm(15), Mm(50), Mm(15))
@@ -120,16 +120,15 @@ def create_pptx(products):
 # =========================================================
 # APP MAIN
 # =========================================================
-st.set_page_config(page_title="Admin Kit", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="BOSS Golf Admin", layout="wide", initial_sidebar_state="expanded")
 init_folders()
 load_css(CSS_FILE)
 
 if 'product_list' not in st.session_state:
     st.session_state.product_list = []
 
-# --- 1. 좌측 사이드바 (Admin Style Navigation) ---
+# --- 1. 좌측 사이드바 (Navigation) ---
 with st.sidebar:
-    # (1) 로고 영역
     if os.path.exists(SIDEBAR_LOGO):
         st.image(SIDEBAR_LOGO, width=140)
     else:
@@ -137,74 +136,37 @@ with st.sidebar:
     
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
-    # (2) 전문적인 메뉴 구성 (sac 라이브러리 사용)
-    # 아이콘은 Bootstrap Icons (bs) 사용
+    # [수정] 대시보드 제거, Spec Maker를 최상단으로 이동
     selected_menu = sac.menu([
-        sac.MenuItem('Dashboard', icon='grid-fill'), # Overview
-        sac.MenuItem('Spec Maker', icon='file-earmark-plus-fill'), # PPT Maker
-        sac.MenuItem('Assets', icon='images', children=[ # Nested Menu
-            sac.MenuItem('Logos', icon='box-seam'),
+        sac.MenuItem('Spec Maker', icon='file-earmark-plus-fill'), # 1. 메인 기능
+        sac.MenuItem('Assets', icon='box-seam', children=[         # 2. 자산 관리
+            sac.MenuItem('Logos', icon='image'),
             sac.MenuItem('Artworks', icon='brush'),
         ]),
-        sac.MenuItem(type='divider'),
-        sac.MenuItem('Settings', icon='gear', disabled=True),
     ], size='sm', color='dark', open_all=True)
 
     st.markdown("<div style='margin-top: auto;'></div>", unsafe_allow_html=True)
     
-    # 하단 깃허브 상태
     if get_github_repo():
         ui.badges(badge_list=[("GitHub Sync", "secondary")], key="gh_status")
     else:
         ui.badges(badge_list=[("Local Mode", "outline")], key="local_status")
 
 
-# --- 2. 메인 콘텐츠 영역 (White Cards) ---
+# --- 2. 메인 콘텐츠 영역 ---
 
-# [PAGE] Dashboard
-if selected_menu == 'Dashboard':
-    # Breadcrumbs & Header
-    st.markdown("#### Dashboard > Overview")
-    st.title("Overview")
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Metric Cards (Shadcn Style)
-    cols = st.columns(3)
-    with cols[0]:
-        ui.metric_card(title="Pending Specs", content=f"{len(st.session_state.product_list)}", description="Ready to generate", key="m1")
-    with cols[1]:
-        ui.metric_card(title="Total Assets", content=f"{len(get_files(LOGO_DIR)) + len(get_files(ARTWORK_DIR))}", description="Logos & Artworks", key="m2")
-    with cols[2]:
-        ui.metric_card(title="System Status", content="Active", description="Version 1.2.0", key="m3")
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Recent Activity (Shadcn Card)
-    st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
-    st.markdown("### Recent Activity")
-    st.markdown("Your recent specification sheet generation tasks.")
-    st.markdown("---")
-    if not st.session_state.product_list:
-        st.info("No active tasks.")
-    else:
-        for item in st.session_state.product_list[-3:]: # Show last 3
-            st.markdown(f"**{item['code']}** - {item['name']}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-# [PAGE] Spec Maker
-elif selected_menu == 'Spec Maker':
-    st.markdown("#### Dashboard > Spec Maker")
-    st.title("Create Specifications")
+# [PAGE] Spec Maker (기본 홈 화면)
+if selected_menu == 'Spec Maker':
+    st.title("Spec Sheet Maker")
+    st.markdown("Create new product specification sheets.")
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 탭으로 분리
     tab1, tab2 = st.tabs(["Editor", "Queue"])
     
+    # 탭 1: 입력 에디터
     with tab1:
         st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
-        st.markdown("### Product Details")
-        st.caption("Enter the product information below.")
+        st.markdown("### Product Info")
         
         with st.form("spec_form", clear_on_submit=True):
             c1, c2 = st.columns([2, 1])
@@ -215,7 +177,7 @@ elif selected_menu == 'Spec Maker':
                 p_rrp = st.text_input("RRP", "Undecided")
             
             st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("### Assets & Colors")
+            st.markdown("### Design Assets")
             
             c3, c4, c5 = st.columns([2, 1, 1])
             with c3: main_img = st.file_uploader("Main Image", type=['png','jpg'])
@@ -223,12 +185,14 @@ elif selected_menu == 'Spec Maker':
             with c5: s_art = st.selectbox("Artwork", ["None"] + get_files(ARTWORK_DIR))
             
             st.markdown("---")
+            st.markdown("### Colorways")
             colors = []
             for i in range(3):
                 col_a, col_b = st.columns([1, 2])
-                with col_a: ci = st.file_uploader(f"Color {i+1} Img", type=['png','jpg'], key=f"ci{i}")
-                with col_b: cn = st.text_input(f"Color {i+1} Name", key=f"cn{i}")
+                with col_a: ci = st.file_uploader(f"Img {i+1}", type=['png','jpg'], key=f"ci{i}", label_visibility="collapsed")
+                with col_b: cn = st.text_input(f"Name {i+1}", placeholder=f"Color {i+1}", key=f"cn{i}", label_visibility="collapsed")
                 if ci and cn: colors.append({"img":ci, "name":cn})
+                st.write("") # Margin
             
             st.markdown("<br>", unsafe_allow_html=True)
             if st.form_submit_button("Add to Queue", type="primary"):
@@ -242,19 +206,19 @@ elif selected_menu == 'Spec Maker':
                     st.success(f"Added {p_code} to queue.")
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # 탭 2: 대기열 목록
     with tab2:
         st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
         c_head, c_btn = st.columns([4, 1])
-        with c_head: st.markdown(f"### Generation Queue ({len(st.session_state.product_list)})")
+        with c_head: st.markdown(f"### Queue ({len(st.session_state.product_list)})")
         with c_btn:
             if ui.button("Clear All", variant="outline", key="clear"):
                 st.session_state.product_list = []
                 st.rerun()
         
         if not st.session_state.product_list:
-            st.info("Queue is empty. Go to 'Editor' tab to add items.")
+            st.info("No items in queue. Use 'Editor' tab to add products.")
         else:
-            # 테이블 형식으로 보여주기 (Shadcn Table 느낌)
             for idx, item in enumerate(st.session_state.product_list):
                 with st.expander(f"{idx+1}. {item['code']} - {item['name']}"):
                     cols = st.columns([1, 4])
@@ -268,18 +232,18 @@ elif selected_menu == 'Spec Maker':
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# [PAGE] Assets (Logos & Artworks)
+# [PAGE] Assets
 elif selected_menu in ['Logos', 'Artworks']:
-    st.markdown(f"#### Assets > {selected_menu}")
     st.title(f"{selected_menu} Library")
+    st.markdown(f"Manage your {selected_menu.lower()} here.")
     st.markdown("<br>", unsafe_allow_html=True)
     
     target_dir = LOGO_DIR if selected_menu == 'Logos' else ARTWORK_DIR
     
-    # 1. Upload Card
+    # 1. Upload
     st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
-    st.markdown("### Upload New Assets")
-    uploaded = st.file_uploader("Drag and drop files here", type=['png','jpg','svg'], accept_multiple_files=True)
+    st.markdown("### Upload")
+    uploaded = st.file_uploader("Drag and drop files", type=['png','jpg','svg'], accept_multiple_files=True)
     if uploaded and st.button("Upload to Storage"):
         with st.spinner("Processing..."):
             for f in uploaded: upload_file(f, target_dir)
@@ -288,10 +252,10 @@ elif selected_menu in ['Logos', 'Artworks']:
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # 2. Grid View
+    # 2. Gallery
     st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
     files = get_files(target_dir)
-    st.markdown(f"### Library ({len(files)} items)")
+    st.markdown(f"### Library ({len(files)})")
     if not files:
         st.info("No files found.")
     else:
