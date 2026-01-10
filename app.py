@@ -167,8 +167,6 @@ if selected_menu == '슬라이드 제작':
     
     # 탭 1: 입력
     with tab_editor:
-        # [수정] 카드 바로 시작 (불필요한 박스 제거됨)
-        st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
         
         with st.form("spec_form", clear_on_submit=False): # 이미지 유지 위해 False 권장이나, 리셋 원하면 True
             st.markdown("#### 기본 정보")
@@ -290,7 +288,6 @@ elif selected_menu == '로고&아트워크 관리':
     active_tab = ui.tabs(options=['로고', '아트워크'], defaultValue='로고', key="asset_tabs")
     target_dir = LOGO_DIR if active_tab == '로고' else ARTWORK_DIR
     
-    st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
     st.markdown(f"### 파일 업로드 ({active_tab})")
     uploaded = st.file_uploader("파일 드래그 앤 드롭", type=['png','jpg','svg'], accept_multiple_files=True)
     if uploaded and st.button("저장하기"):
