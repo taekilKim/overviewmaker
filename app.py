@@ -90,19 +90,30 @@ def create_pptx(products):
         try: tb.text_frame.paragraphs[0].font.name = 'Pretendard'
         except: pass
         
-        rrp = slide.shapes.add_textbox(Mm(250), Mm(15), Mm(50), Mm(15))
-        rrp.text_frame.text = f"RRP : {data['rrp']}"
-        rrp.text_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
+        # RRP (가격) - 입력은 안 받지만 표시는 함 (빈값 또는 히든 처리)
+        if data.get('rrp'):
+            rrp = slide.shapes.add_textbox(Mm(250), Mm(15), Mm(50), Mm(15))
+            rrp.text_frame.text = f"RRP : {data['rrp']}"
+            rrp.text_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
 
+        # 메인 이미지
         if data['main_image']:
             slide.shapes.add_picture(data['main_image'], left=Mm(20), top=Mm(60), width=Mm(140))
+        
+        # 로고
         if data['logo'] and data['logo'] != "선택 없음":
             p_logo = os.path.join(LOGO_DIR, data['logo'])
             if os.path.exists(p_logo): slide.shapes.add_picture(p_logo, left=Mm(180), top=Mm(60), width=Mm(40))
-        if data['artwork'] and data['artwork'] != "선택 없음":
-            p_art = os.path.join(ARTWORK_DIR, data['artwork'])
+        
+        # 아트워크 (여러 개일 수 있음 - 첫 번째 것만 배치하거나, 위치 조정 필요)
+        # 현재 로직은 첫 번째 아트워크만 기존 위치에 배치 (추후 레이아웃 조정 가능)
+        if data['artworks']:
+            # 예시: 첫 번째 아트워크만 배치
+            first_art = data['artworks'][0]
+            p_art = os.path.join(ARTWORK_DIR, first_art)
             if os.path.exists(p_art): slide.shapes.add_picture(p_art, left=Mm(180), top=Mm(110), width=Mm(40))
 
+        # 컬러웨이
         sx, sy, w, g = 180, 155, 30, 5
         for i, c in enumerate(data['colors']):
             cx = sx + (i * (w + g))
@@ -129,7 +140,6 @@ if 'product_list' not in st.session_state:
 
 # --- 1. 좌측 사이드바 ---
 with st.sidebar:
-    # 로고 영역
     if os.path.exists(SIDEBAR_LOGO):
         st.image(SIDEBAR_LOGO, width=140)
     else:
@@ -137,71 +147,109 @@ with st.sidebar:
     
     st.markdown("<div style='margin-bottom: 24px;'></div>", unsafe_allow_html=True)
 
-    # [요구사항 3] 메뉴는 2개만 존재
     selected_menu = sac.menu([
         sac.MenuItem('슬라이드 제작', icon='file-earmark-plus'),
         sac.MenuItem('로고&아트워크 관리', icon='image'),
     ], size='sm', color='dark', open_all=True)
 
     st.markdown("<div style='margin-top: auto;'></div>", unsafe_allow_html=True)
-    
-    if get_github_repo():
-        ui.badges(badge_list=[("GitHub 연결됨", "secondary")], key="gh_status")
-    else:
-        ui.badges(badge_list=[("로컬 모드", "outline")], key="local_status")
+    # [수정] 로컬 모드 배지 삭제
 
 
 # --- 2. 메인 콘텐츠 ---
 
-# [요구사항 4] 홈 화면은 반드시 슬라이드 제작 화면
 if selected_menu == '슬라이드 제작':
     st.title("슬라이드 제작")
-    st.markdown("제품 정보를 입력하여 스펙 시트를 생성합니다.")
+    st.caption("제품 정보를 입력하여 스펙 시트를 생성합니다.")
     st.markdown("<br>", unsafe_allow_html=True)
 
     tab_editor, tab_queue = st.tabs(["정보 입력", "생성 대기열"])
     
     # 탭 1: 입력
     with tab_editor:
-        # [요구사항 2] Shadcn Admin 스타일의 흰색 카드 적용
+        # [수정] 카드 바로 시작 (불필요한 박스 제거됨)
         st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
-        st.markdown("### 제품 상세 정보")
-        st.caption("아래 양식을 작성하여 제품을 추가하세요.")
         
-        with st.form("spec_form", clear_on_submit=True):
-            c1, c2 = st.columns([2, 1])
+        with st.form("spec_form", clear_on_submit=False): # 이미지 유지 위해 False 권장이나, 리셋 원하면 True
+            st.markdown("#### 기본 정보")
+            # [수정] RRP(가격) 입력 필드 삭제 (p_name, p_code만 남김)
+            p_name = st.text_input("제품명", "MEN'S T-SHIRTS")
+            p_code = st.text_input("품번 (필수)", placeholder="예: BKFTM1581")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("#### 디자인 자산")
+            
+            # 상단: 메인 이미지
+            main_img = st.file_uploader("메인 이미지", type=['png','jpg'], help="슬라이드 좌측에 크게 들어갈 이미지입니다.")
+            
+            # 하단: 로고 & 아트워크 (2단 분리)
+            c1, c2 = st.columns(2)
             with c1:
-                p_name = st.text_input("제품명", "MEN'S T-SHIRTS")
-                p_code = st.text_input("품번 (필수)", placeholder="예: BKFTM1581")
+                s_logo = st.selectbox("로고 선택", ["선택 없음"] + get_files(LOGO_DIR))
+            
             with c2:
-                p_rrp = st.text_input("가격 (RRP)", "미정")
+                # [수정] 아트워크 다중 선택 (Popover)
+                available_artworks = get_files(ARTWORK_DIR)
+                selected_artworks = []
+                
+                # 팝오버 버튼 생성
+                with st.popover("아트워크 선택하기 (클릭)", use_container_width=True):
+                    if not available_artworks:
+                        st.info("등록된 아트워크가 없습니다.")
+                    else:
+                        st.markdown("**사용할 아트워크를 체크하세요**")
+                        for art in available_artworks:
+                            # 체크박스와 이미지를 나란히 배치
+                            ac1, ac2 = st.columns([1, 4])
+                            with ac1:
+                                is_checked = st.checkbox("선택", key=f"chk_{art}", label_visibility="collapsed")
+                            with ac2:
+                                st.image(os.path.join(ARTWORK_DIR, art), width=50)
+                                st.caption(art)
+                            
+                            if is_checked:
+                                selected_artworks.append(art)
             
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("### 디자인 자산")
-            
-            c3, c4, c5 = st.columns([2, 1, 1])
-            with c3: main_img = st.file_uploader("메인 이미지", type=['png','jpg'])
-            with c4: s_logo = st.selectbox("로고", ["선택 없음"] + get_files(LOGO_DIR))
-            with c5: s_art = st.selectbox("아트워크", ["선택 없음"] + get_files(ARTWORK_DIR))
-            
+            # 선택된 아트워크 표시
+            if selected_artworks:
+                st.caption(f"선택됨: {', '.join(selected_artworks)}")
+
             st.markdown("---")
-            st.markdown("### 컬러웨이")
-            colors = []
-            for i in range(3):
-                col_a, col_b = st.columns([1, 2])
-                with col_a: ci = st.file_uploader(f"컬러 {i+1} 이미지", type=['png','jpg'], key=f"ci{i}", label_visibility="collapsed")
-                with col_b: cn = st.text_input(f"컬러 {i+1} 색상명", placeholder=f"색상명 {i+1}", key=f"cn{i}", label_visibility="collapsed")
-                if ci and cn: colors.append({"img":ci, "name":cn})
-                st.write("")
+            st.markdown("#### 컬러웨이 (Colorways)")
+            
+            # [수정] 컬러웨이 일괄 업로드
+            # 한 번에 여러 파일을 올리면 자동으로 폼을 채워줌
+            uploaded_colors = st.file_uploader("컬러웨이 이미지 일괄 업로드 (최대 4개)", type=['png','jpg'], accept_multiple_files=True)
+            
+            colors_input = []
+            
+            if uploaded_colors:
+                st.caption("이미지 순서대로 색상명을 입력해주세요.")
+                # 최대 4개까지만 처리
+                for idx, c_file in enumerate(uploaded_colors[:4]):
+                    col_card, col_input = st.columns([1, 3])
+                    with col_card:
+                        st.image(c_file, width=60)
+                    with col_input:
+                        c_name = st.text_input(f"색상명 {idx+1}", key=f"c_name_{idx}")
+                    colors_input.append({"img": c_file, "name": c_name})
+            else:
+                st.info("컬러웨이 이미지를 업로드하면 입력칸이 나타납니다.")
             
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.form_submit_button("대기열에 추가"):
+            
+            # 제출 버튼
+            if st.form_submit_button("대기열에 추가", type="primary"):
                 if not p_code or not main_img:
                     st.error("품번과 메인 이미지는 필수입니다.")
                 else:
                     st.session_state.product_list.append({
-                        "name":p_name, "code":p_code, "rrp":p_rrp, 
-                        "main_image":main_img, "logo":s_logo, "artwork":s_art, "colors":colors
+                        "name":p_name, "code":p_code, "rrp": "", # RRP는 빈 값 처리
+                        "main_image":main_img, 
+                        "logo":s_logo, 
+                        "artworks": selected_artworks, # 리스트로 저장
+                        "artwork": selected_artworks[0] if selected_artworks else "선택 없음", # 하위 호환성 (첫번째꺼)
+                        "colors": colors_input
                     })
                     st.success(f"'{p_code}' 추가 완료.")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -217,13 +265,15 @@ if selected_menu == '슬라이드 제작':
                 st.rerun()
         
         if not st.session_state.product_list:
-            st.info("대기 중인 항목이 없습니다. '정보 입력' 탭에서 추가해주세요.")
+            st.info("대기 중인 항목이 없습니다.")
         else:
             for idx, item in enumerate(st.session_state.product_list):
                 with st.expander(f"{idx+1}. {item['code']} - {item['name']}"):
                     cols = st.columns([1, 4])
                     cols[0].image(item['main_image'])
-                    cols[1].write(f"컬러: {len(item['colors'])} | 로고: {item['logo']}")
+                    # 아트워크 리스트 표시
+                    art_str = ", ".join(item['artworks']) if item.get('artworks') else "없음"
+                    cols[1].write(f"컬러: {len(item['colors'])}개 | 로고: {item['logo']} | 아트워크: {art_str}")
             
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("PPT 생성 및 다운로드", type="primary"):
@@ -232,34 +282,31 @@ if selected_menu == '슬라이드 제작':
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# [메뉴 2] 로고&아트워크 관리
 elif selected_menu == '로고&아트워크 관리':
-    st.title("로고 & 아트워크 관리")
-    st.markdown("스펙 시트에 사용될 이미지 자산을 관리합니다.")
+    st.title("자산 관리 (Asset Manager)")
+    st.caption("디자인 자산을 업로드하고 관리합니다.")
     st.markdown("<br>", unsafe_allow_html=True)
     
     active_tab = ui.tabs(options=['로고', '아트워크'], defaultValue='로고', key="asset_tabs")
     target_dir = LOGO_DIR if active_tab == '로고' else ARTWORK_DIR
     
-    # 업로드
     st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
     st.markdown(f"### 파일 업로드 ({active_tab})")
-    uploaded = st.file_uploader("파일을 이곳에 드래그하세요", type=['png','jpg','svg'], accept_multiple_files=True)
+    uploaded = st.file_uploader("파일 드래그 앤 드롭", type=['png','jpg','svg'], accept_multiple_files=True)
     if uploaded and st.button("저장하기"):
         with st.spinner("저장 중..."):
             for f in uploaded: upload_file(f, target_dir)
-        st.success("저장 완료.")
+        st.success("완료")
         time.sleep(1)
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # 갤러리
     st.markdown('<div class="shadcn-card">', unsafe_allow_html=True)
     files = get_files(target_dir)
     st.markdown(f"### 라이브러리 ({len(files)})")
     
     if not files:
-        st.info("저장된 파일이 없습니다.")
+        st.info("파일이 없습니다.")
     else:
         cols = st.columns(5)
         for i, f in enumerate(files):
