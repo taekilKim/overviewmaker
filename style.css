@@ -1,62 +1,52 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 
-/* 1. 폰트 강제 적용 (Pretendard) */
+/* =========================================================
+   1. 폰트 및 기본 설정 (유지)
+   ========================================================= */
 html, body, [class*="css"], .stApp, .stTextInput, .stSelectbox, .stButton, div[data-testid="stMarkdownContainer"] p {
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif !important;
 }
 
-/* 2. 배경 설정 (전체 회색톤) */
+/* 전체 배경색: 아주 연한 쿨그레이 (유지) */
 .stApp {
     background-color: #F8FAFC; 
 }
 
-/* 3. 레이아웃 여백 초기화 */
+/* =========================================================
+   2. 헤더 및 툴바 (네이티브 복원)
+   - 헤더를 숨기는 코드를 모두 삭제했습니다.
+   - 이제 Streamlit 기본 상단 바와 햄버거 메뉴, 사이드바 버튼이 정상 작동합니다.
+   ========================================================= */
+
+/* (선택사항) 헤더 배경을 투명하게 해서 본문과 자연스럽게 이어지게 함 */
+header[data-testid="stHeader"] {
+    background-color: transparent !important;
+}
+
+/* 푸터(Made with Streamlit)는 업무용 툴이므로 숨김 유지 (원하시면 삭제 가능) */
+footer {
+    display: none !important;
+}
+
+/* =========================================================
+   3. 레이아웃 및 컴포넌트 디자인 (유지)
+   ========================================================= */
+
+/* 상단 여백 조정 (헤더가 생겼으므로 패딩을 살짝 줄여 균형 맞춤) */
 .block-container {
-    padding-top: 2rem !important;
+    padding-top: 3rem !important;
     padding-bottom: 5rem !important;
     max-width: 1200px !important;
 }
 
-/* 
-   [핵심 수정 사항] 헤더 및 사이드바 버튼 처리 
-   -------------------------------------------------------
-   헤더 자체를 display: none으로 지우면 안 됩니다.
-   헤더는 투명하게 두고, 우측 툴바만 숨겨야 좌측 토글 버튼이 살아납니다.
-*/
-
-/* 헤더 배경만 투명하게 변경 */
-header[data-testid="stHeader"] {
-    background-color: transparent !important;
-    z-index: 99 !important; /* 버튼이 클릭될 수 있게 상위 배치 */
-}
-
-/* 우측 상단 툴바(햄버거 메뉴, Deploy 등)만 숨김 */
-div[data-testid="stToolbar"] {
-    display: none !important;
-}
-
-/* 상단 알록달록한 줄(Decoration) 숨김 */
-div[data-testid="stDecoration"] {
-    display: none !important;
-}
-
-/* [중요] 사이드바 여는 화살표 버튼 강제 노출 & 색상 지정 */
-[data-testid="stSidebarCollapsedControl"] {
-    display: block !important;
-    visibility: visible !important;
-    color: #191F28 !important; /* 검정색 아이콘 */
-    background-color: rgba(255, 255, 255, 0.8) !important; /* 잘 보이게 흰 배경 살짝 추가 */
-    border-radius: 4px !important;
-}
-
-/* 4. 사이드바 디자인 (흰색 배경 + 우측 선) */
+/* 사이드바 디자인 (흰색 배경 + 우측 경계선) */
 section[data-testid="stSidebar"] {
     background-color: #FFFFFF !important;
     border-right: 1px solid #E5E8EB !important;
 }
 
-/* 5. 토스 스타일 흰색 카드 (app.py에서 사용) */
-.toss-card {
+/* 토스 스타일 흰색 카드 (콘텐츠 박스) */
+.toss-card, .shadcn-card {
     background-color: #FFFFFF;
     border-radius: 16px;
     padding: 32px;
@@ -65,7 +55,7 @@ section[data-testid="stSidebar"] {
     margin-bottom: 24px;
 }
 
-/* 6. 입력 필드 디자인 보정 */
+/* 입력 필드 디자인 (깔끔한 테두리) */
 .stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
     background-color: #FFFFFF !important;
     border: 1px solid #E5E8EB !important;
@@ -73,12 +63,14 @@ section[data-testid="stSidebar"] {
     box-shadow: none !important;
     color: #333D4B !important;
 }
+
+/* 입력 필드 포커스 효과 (파란색 라인) */
 .stTextInput input:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within {
     border-color: #3182F6 !important;
     box-shadow: 0 0 0 1px #3182F6 !important;
 }
 
-/* 7. 탭 스타일 보정 */
+/* 탭 스타일 */
 .stTabs [data-baseweb="tab-list"] {
     border-bottom: 1px solid #E5E8EB;
     background-color: transparent;
