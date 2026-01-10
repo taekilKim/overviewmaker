@@ -1,80 +1,100 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 
-/* =========================================================
-   1. 폰트 및 기본 설정 (유지)
-   ========================================================= */
-html, body, [class*="css"], .stApp, .stTextInput, .stSelectbox, .stButton, div[data-testid="stMarkdownContainer"] p {
+/* 1. Global Reset & Font */
+* {
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif !important;
 }
 
-/* 전체 배경색: 아주 연한 쿨그레이 (유지) */
+/* 2. Background Color (Shadcn Zinc-100) */
 .stApp {
-    background-color: #F8FAFC; 
+    background-color: #F4F4F5 !important;
 }
 
-/* =========================================================
-   2. 헤더 및 툴바 (네이티브 복원)
-   - 헤더를 숨기는 코드를 모두 삭제했습니다.
-   - 이제 Streamlit 기본 상단 바와 햄버거 메뉴, 사이드바 버튼이 정상 작동합니다.
-   ========================================================= */
+/* 3. Header (Constraint 1: Keep Native) */
+/* 헤더 관련 CSS는 일절 건드리지 않음으로써 네이티브 상태 유지 */
 
-/* (선택사항) 헤더 배경을 투명하게 해서 본문과 자연스럽게 이어지게 함 */
-header[data-testid="stHeader"] {
-    background-color: transparent !important;
-}
 
-/* 푸터(Made with Streamlit)는 업무용 툴이므로 숨김 유지 (원하시면 삭제 가능) */
-footer {
-    display: none !important;
-}
-
-/* =========================================================
-   3. 레이아웃 및 컴포넌트 디자인 (유지)
-   ========================================================= */
-
-/* 상단 여백 조정 (헤더가 생겼으므로 패딩을 살짝 줄여 균형 맞춤) */
-.block-container {
-    padding-top: 3rem !important;
-    padding-bottom: 5rem !important;
-    max-width: 1200px !important;
-}
-
-/* 사이드바 디자인 (흰색 배경 + 우측 경계선) */
+/* 4. Sidebar Style (Shadcn Admin Style) */
 section[data-testid="stSidebar"] {
     background-color: #FFFFFF !important;
-    border-right: 1px solid #E5E8EB !important;
+    border-right: 1px solid #E4E4E7 !important; /* Zinc-200 */
 }
 
-/* 토스 스타일 흰색 카드 (콘텐츠 박스) */
-.toss-card, .shadcn-card {
+/* 5. Main Content Card Style (White box with subtle border) */
+.shadcn-card {
     background-color: #FFFFFF;
-    border-radius: 16px;
-    padding: 32px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-    border: 1px solid #E5E8EB;
+    border: 1px solid #E4E4E7; /* Zinc-200 */
+    border-radius: 0.5rem; /* radius-md */
+    padding: 24px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
     margin-bottom: 24px;
 }
 
-/* 입력 필드 디자인 (깔끔한 테두리) */
-.stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
+/* 6. Typography */
+h1 {
+    color: #09090B !important; /* Zinc-950 */
+    font-weight: 700 !important;
+    letter-spacing: -0.025em !important;
+}
+h2, h3 {
+    color: #09090B !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.025em !important;
+}
+p, span, label {
+    color: #71717A !important; /* Zinc-500 */
+    font-size: 0.875rem !important; /* 14px */
+}
+
+/* 7. Input Fields (Clean, Zinc Border) */
+.stTextInput input, .stSelectbox div[data-baseweb="select"] > div, .stFileUploader {
     background-color: #FFFFFF !important;
-    border: 1px solid #E5E8EB !important;
-    border-radius: 8px !important;
-    box-shadow: none !important;
-    color: #333D4B !important;
+    border: 1px solid #E4E4E7 !important;
+    border-radius: 0.375rem !important; /* radius-md */
+    color: #09090B !important;
+    font-size: 0.875rem !important;
 }
-
-/* 입력 필드 포커스 효과 (파란색 라인) */
 .stTextInput input:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within {
-    border-color: #3182F6 !important;
-    box-shadow: 0 0 0 1px #3182F6 !important;
+    border-color: #18181B !important; /* Zinc-900 */
+    box-shadow: 0 0 0 1px #18181B !important;
 }
 
-/* 탭 스타일 */
+/* 8. Buttons (Shadcn Primary: Black) */
+div.stButton > button {
+    background-color: #18181B !important; /* Zinc-900 */
+    color: #FFFFFF !important;
+    border-radius: 0.375rem !important;
+    font-weight: 500 !important;
+    font-size: 0.875rem !important;
+    border: none !important;
+    padding: 0.5rem 1rem !important;
+    transition: background-color 0.2s;
+}
+div.stButton > button:hover {
+    background-color: #27272A !important; /* Zinc-800 */
+}
+
+/* Secondary Button Styling (Outline) - using specificity hack */
+button[kind="secondary"] {
+    background-color: #FFFFFF !important;
+    color: #09090B !important;
+    border: 1px solid #E4E4E7 !important;
+}
+
+/* 9. Tabs */
 .stTabs [data-baseweb="tab-list"] {
-    border-bottom: 1px solid #E5E8EB;
     background-color: transparent;
+    border-bottom: 1px solid #E4E4E7;
+    gap: 2rem;
 }
 .stTabs [data-baseweb="tab"] {
     background-color: transparent;
+    border: none;
+    color: #71717A;
+    font-weight: 500;
+    padding-bottom: 0.5rem;
+}
+.stTabs [aria-selected="true"] {
+    color: #09090B !important;
+    border-bottom: 2px solid #09090B !important;
 }
