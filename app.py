@@ -20,11 +20,17 @@ TEMPLATE_FILE = "template.pptx"
 SIDEBAR_LOGO = "assets/bossgolf.svg"
 LOGO_DIR = "assets/logos"
 ARTWORK_DIR = "assets/artworks"
+CSS_FILE = "style.css"
 
 # --- 유틸리티 함수 ---
 def init_folders():
     for folder in [LOGO_DIR, ARTWORK_DIR]:
         if not os.path.exists(folder): os.makedirs(folder)
+
+def load_css(file_name):
+    if os.path.exists(file_name):
+        with open(file_name) as f:
+            st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 def get_files(folder_path):
     if not os.path.exists(folder_path): return []
@@ -81,6 +87,8 @@ def create_pptx(products):
         tb.text_frame.text = f"{data['name']}\n{data['code']}"
         tb.text_frame.paragraphs[0].font.size = Pt(24)
         tb.text_frame.paragraphs[0].font.bold = True
+        try: tb.text_frame.paragraphs[0].font.name = 'Pretendard'
+        except: pass
         
         # RRP (표시만 함)
         if data.get('rrp'):
@@ -123,6 +131,7 @@ def create_pptx(products):
 # =========================================================
 st.set_page_config(page_title="BOSS Golf Admin", layout="wide", initial_sidebar_state="expanded")
 init_folders()
+load_css(CSS_FILE)
 
 if 'product_list' not in st.session_state:
     st.session_state.product_list = []
@@ -141,13 +150,7 @@ with st.sidebar:
         sac.MenuItem('로고&아트워크 관리', icon='image'),
     ], size='sm', color='dark', open_all=True)
 
-    st.markdown("---")
-    
-    # 하단 상태 (간단하게 텍스트로)
-    if GITHUB_AVAILABLE:
-        st.caption("🟢 GitHub 연동됨")
-    else:
-        st.caption("⚪ 로컬 모드")
+    # [수정] 깃허브 연동 상태 표시 제거됨
 
 
 # --- 2. 메인 콘텐츠 ---
@@ -161,7 +164,7 @@ if selected_menu == '슬라이드 제작':
     
     # 탭 1: 입력
     with tab_editor:
-        # 폼 시작 (카드 CSS 제거됨 - 기본 UI 사용)
+        # 폼 시작
         with st.form("spec_form", clear_on_submit=False):
             st.subheader("1. 기본 정보")
             c1, c2 = st.columns([3, 1])
