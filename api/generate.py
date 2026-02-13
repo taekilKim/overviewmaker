@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import JSONResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 
 from ppt_engine import generate_pptx
 
@@ -26,6 +26,14 @@ def _to_bytes_file(upload: UploadFile):
 
 @app.get("/")
 def root():
+    html_path = ROOT / "web" / "index.html"
+    if html_path.exists():
+        return FileResponse(str(html_path), media_type="text/html")
+    return JSONResponse({"ok": True, "service": "overviewmaker-api"})
+
+
+@app.get("/health")
+def health():
     return JSONResponse({"ok": True, "service": "overviewmaker-api"})
 
 
