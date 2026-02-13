@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import io
+import json
 from pathlib import Path
 from typing import List
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -17,9 +19,50 @@ TEMPLATE_FILE = str(ROOT / "template.pptx")
 LOGO_DIR = str(ROOT / "assets" / "logos")
 ARTWORK_DIR = str(ROOT / "assets" / "artworks")
 ASSETS_DIR = ROOT / "assets"
+ARTWORK_META_FILE = Path(ARTWORK_DIR) / "_meta.json"
 
 if ASSETS_DIR.exists():
     app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+def _asset_dir(kind: str) -> Path:
+    k = (kind or "").strip().lower()
+    if k in ("logo", "logos"):
+        return Path(LOGO_DIR)
+    if k in ("artwork", "artworks"):
+        return Path(ARTWORK_DIR)
+    raise HTTPException(status_code=400, detail="invalid kind")
+
+
+def _list_files(folder: Path) -> List[str]:
+    if not folder.exists():
+        return []
+    allowed = {".png", ".jpg", ".jpeg", ".svg"}
+    return sorted(
+        [p.name for p in folder.iterdir() if p.is_file() and p.suffix.lower() in allowed],
+        key=str.casefold,
+    )
+
+
+def _load_artwork_meta() -> dict:
+    if not ARTWORK_META_FILE.exists():
+        return {}
+    try:
+        return json.loads(ARTWORK_META_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _save_artwork_meta(meta: dict) -> None:
+    ARTWORK_META_FILE.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _to_bytes_file(upload: UploadFile):
@@ -45,6 +88,72 @@ def health():
 @app.get("/favicon.ico")
 def favicon():
     return Response(status_code=204)
+
+
+@app.get("/api/assets")
+def list_assets(kind: str):
+    folder = _asset_dir(kind)
+    folder.mkdir(parents=True, exist_ok=True)
+    files = _list_files(folder)
+    sub = "logos" if folder == Path(LOGO_DIR) else "artworks"
+    payload = [{"name": f, "url": f"/assets/{sub}/{f}"} for f in files]
+    data = {"kind": kind, "files": payload}
+    if folder == Path(ARTWORK_DIR):
+        meta = _load_artwork_meta()
+        for f in files:
+            meta.setdefault(f, "default")
+        stale = [k for k in list(meta.keys()) if k not in files]
+        for k in stale:
+            meta.pop(k, None)
+        _save_artwork_meta(meta)
+        data["meta"] = meta
+    return JSONResponse(data)
+
+
+@app.post("/api/assets/upload")
+def upload_assets(kind: str = Form(...), files: List[UploadFile] = File(default=[])):
+    folder = _asset_dir(kind)
+    folder.mkdir(parents=True, exist_ok=True)
+    if not files:
+        raise HTTPException(status_code=400, detail="no files")
+    saved = []
+    for f in files:
+        name = Path(f.filename or "").name
+        if not name:
+            continue
+        target = folder / name
+        target.write_bytes(f.file.read())
+        saved.append(name)
+    if folder == Path(ARTWORK_DIR):
+        meta = _load_artwork_meta()
+        for name in saved:
+            meta.setdefault(name, "default")
+        _save_artwork_meta(meta)
+    return JSONResponse({"ok": True, "saved": saved})
+
+
+@app.delete("/api/assets")
+def delete_asset(kind: str, name: str):
+    folder = _asset_dir(kind)
+    target = folder / Path(name).name
+    if target.exists():
+        target.unlink()
+    if folder == Path(ARTWORK_DIR):
+        meta = _load_artwork_meta()
+        meta.pop(Path(name).name, None)
+        _save_artwork_meta(meta)
+    return JSONResponse({"ok": True})
+
+
+@app.post("/api/assets/artwork-mode")
+def set_artwork_mode(name: str = Form(...), mode: str = Form(...)):
+    allowed = {"default", "horizontal", "small"}
+    if mode not in allowed:
+        raise HTTPException(status_code=400, detail="invalid mode")
+    meta = _load_artwork_meta()
+    meta[Path(name).name] = mode
+    _save_artwork_meta(meta)
+    return JSONResponse({"ok": True})
 
 
 @app.post("/api/generate")
