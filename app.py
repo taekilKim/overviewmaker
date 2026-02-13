@@ -67,7 +67,6 @@ COLORWAY_TWO_ITEMS_LABEL_TOP_MM = 114.8
 COLORWAY_TWO_ITEMS_LABEL_GAP_MM = 28.0
 COLORWAY_IMAGE_WIDTH_MM = 27.0
 COLORWAY_IMAGE_TOP_MM = 120.0
-COLORWAY_TWO_ITEMS_IMAGE_GAP_MM = 28.0
 
 # --- 유틸리티 함수 ---
 def init_folders():
@@ -494,9 +493,6 @@ def create_pptx(products):
             # 2줄 이상이면 아래줄 고정 후 위로 쌓기
             cy = sy - (rows - 1 - row) * (img_h + row_gap + 10)
             cx = sx + (col * (w + g))
-            if len(data['colors']) == 2 and rows == 1:
-                cx = COLORWAY_TWO_ITEMS_LABEL_START_LEFT_MM + (i * COLORWAY_TWO_ITEMS_IMAGE_GAP_MM)
-                cy = COLORWAY_IMAGE_TOP_MM
             if c['img']:
                 slide.shapes.add_picture(c['img'], left=Mm(cx), top=Mm(cy), width=Mm(COLORWAY_IMAGE_WIDTH_MM))
             # 1줄/2개 케이스: 지정 좌표에서 ①CAMEL 형식으로 라벨 표기
