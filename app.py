@@ -30,8 +30,8 @@ CSS_FILE = "style.css"
 # --- 텍스트 좌표/스타일 스펙 (mm 기준) ---
 TEXT_SPECS = {
     "season": {
-        "left": 20.43,
-        "top": 10.24,
+        "left": 22.5,
+        "top": 12.5,
         "width": 83.33,
         "height": 9.49,
         "font_name": "Averta PE Extrabold",
@@ -40,8 +40,8 @@ TEXT_SPECS = {
         "color_hex": "#000000",  # 사용자 선택으로 덮어씀
     },
     "category": {
-        "left": 6.94,
-        "top": 21.92,
+        "left": 9.5,
+        "top": 24.1,
         "width": 117.05,
         "height": 13.85,
         "font_name": "Averta PE Extrabold",
@@ -50,8 +50,8 @@ TEXT_SPECS = {
         "color_hex": "#987147",
     },
     "code": {
-        "left": 6.94,
-        "top": 30.58,
+        "left": 9.5,
+        "top": 32.5,
         "width": 117.05,
         "height": 13.85,
         "font_name": "Averta PE Extrabold",
@@ -59,16 +59,7 @@ TEXT_SPECS = {
         "bold": True,
         "color_hex": "#000000",
     },
-    "page": {
-        "left": 9.53,
-        "top": 12.49,
-        "width": 15.53,
-        "height": 4.00,
-        "font_name": "Averta PE Light",
-        "font_size": 9,
-        "bold": False,
-        "color_hex": "#987147",
-    },
+    # page number is managed by slide master placeholder
 }
 
 # --- 유틸리티 함수 ---
@@ -375,11 +366,8 @@ def create_pptx(products):
         selected_layout = prs.slide_layouts[1] if len(prs.slide_layouts) > 1 else prs.slide_layouts[0]
     layout_anchors = find_layout_anchor(selected_layout)
 
-    base_slide_count = len(prs.slides)
-
-    for idx, data in enumerate(products):
+    for data in products:
         slide = prs.slides.add_slide(selected_layout)
-        page_no = base_slide_count + idx + 1
         season_color_hex = data.get("season_color") or TEXT_SPECS["season"]["color_hex"]
 
         # 텍스트: 좌표 고정 매핑
@@ -403,12 +391,6 @@ def create_pptx(products):
             TEXT_SPECS["code"],
         )
 
-        add_text_by_spec(
-            slide,
-            f"PAGE {page_no}",
-            TEXT_SPECS["page"],
-        )
-        
         # RRP (표시만 함)
         if data.get('rrp'):
             rrp_left = layout_anchors["rrp_label"].left if layout_anchors.get("rrp_label") else Mm(250)
