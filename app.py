@@ -6,6 +6,8 @@ from pptx.util import Mm, Pt
 from pptx.enum.text import PP_ALIGN
 from pptx.enum.shapes import PP_PLACEHOLDER
 from pptx.dml.color import RGBColor
+from pptx.oxml.xmlchemy import OxmlElement
+from pptx.oxml.ns import qn
 import io
 import os
 import time
@@ -24,6 +26,50 @@ SIDEBAR_LOGO = "assets/bossgolf.svg"
 LOGO_DIR = "assets/logos"
 ARTWORK_DIR = "assets/artworks"
 CSS_FILE = "style.css"
+
+# --- 텍스트 좌표/스타일 스펙 (mm 기준) ---
+TEXT_SPECS = {
+    "season": {
+        "left": 20.43,
+        "top": 10.24,
+        "width": 83.33,
+        "height": 9.49,
+        "font_name": "Averta PE Extrabold",
+        "font_size": 12,
+        "bold": True,
+        "color_hex": "#000000",  # 사용자 선택으로 덮어씀
+    },
+    "category": {
+        "left": 6.94,
+        "top": 21.92,
+        "width": 117.05,
+        "height": 13.85,
+        "font_name": "Averta PE Extrabold",
+        "font_size": 24,
+        "bold": True,
+        "color_hex": "#987147",
+    },
+    "code": {
+        "left": 6.94,
+        "top": 30.58,
+        "width": 117.05,
+        "height": 13.85,
+        "font_name": "Averta PE Extrabold",
+        "font_size": 24,
+        "bold": True,
+        "color_hex": "#000000",
+    },
+    "page": {
+        "left": 9.53,
+        "top": 12.49,
+        "width": 15.53,
+        "height": 4.00,
+        "font_name": "Averta PE Light",
+        "font_size": 9,
+        "bold": False,
+        "color_hex": "#987147",
+    },
+}
 
 # --- 유틸리티 함수 ---
 def init_folders():
@@ -200,6 +246,42 @@ def add_styled_textbox(slide, slot_shape, text, fallback_left, fallback_top, fal
     apply_text_style(p, style)
     return tb
 
+def add_text_by_spec(slide, text, spec, color_override=None):
+    tb = slide.shapes.add_textbox(
+        Mm(spec["left"]),
+        Mm(spec["top"]),
+        Mm(spec["width"]),
+        Mm(spec["height"]),
+    )
+    tf = tb.text_frame
+    tf.clear()
+    p = tf.paragraphs[0]
+    run = p.add_run()
+    run.text = text
+    f = run.font
+    f.name = spec["font_name"]
+    f.size = Pt(spec["font_size"])
+    f.bold = spec.get("bold")
+
+    # 일부 PowerPoint 환경에서 font.name만으로는 폰트 유지가 불안정해서
+    # run 레벨의 latin/ea/cs 타입페이스를 함께 강제 지정한다.
+    rPr = run._r.get_or_add_rPr()
+    for tag in ("a:latin", "a:ea", "a:cs"):
+        node = rPr.find(qn(tag))
+        if node is None:
+            node = OxmlElement(tag)
+            rPr.append(node)
+        node.set("typeface", spec["font_name"])
+
+    color = color_override or spec.get("color_hex")
+    rgb = hex_to_rgbcolor(color)
+    if rgb is not None:
+        try:
+            f.color.rgb = rgb
+        except:
+            pass
+    return tb
+
 def has_slide_number_placeholder(slide):
     for shp in slide.shapes:
         if not getattr(shp, "is_placeholder", False):
@@ -282,86 +364,39 @@ def create_pptx(products):
         selected_layout = prs.slide_layouts[1] if len(prs.slide_layouts) > 1 else prs.slide_layouts[0]
     layout_anchors = find_layout_anchor(selected_layout)
 
-    # 레이아웃 슬롯(실패 시 폴백용 좌표/스타일 참조)
-    season_slot = find_text_slot(selected_layout, ["{SEASON}", "SEASON_SLOT", "{{SEASON_ITEM}}"])
-    category_slot = find_text_slot(selected_layout, ["{CATEGORY}", "CATEGORY_SLOT", "{{ITEM_CATEGORY}}"])
-    code_slot = find_text_slot(selected_layout, ["{CODE}", "CODE_SLOT", "{{ITEM_CODE}}"])
-    page_slot = find_text_slot(selected_layout, ["PAGE", "SLIDE", "‹#›", "<#>"])
-
     base_slide_count = len(prs.slides)
 
     for idx, data in enumerate(products):
         slide = prs.slides.add_slide(selected_layout)
         page_no = base_slide_count + idx + 1
-        season_color = hex_to_rgbcolor(data.get("season_color"))
+        season_color_hex = data.get("season_color") or TEXT_SPECS["season"]["color_hex"]
 
-        # 텍스트: 시즌 아이템명 + 타이틀 2줄(카테고리/품번)
+        # 텍스트: 좌표 고정 매핑
         season_name = data.get("season_item", "")
         if season_name:
-            replaced = replace_text_in_slide(
+            add_text_by_spec(
                 slide,
-                ["{season}", "SEASON_SLOT", "{{SEASON_ITEM}}"],
                 season_name,
-                color_override=season_color,
+                TEXT_SPECS["season"],
+                color_override=season_color_hex,
             )
-            if not replaced:
-                add_styled_textbox(
-                    slide=slide,
-                    slot_shape=season_slot,
-                    text=season_name,
-                    fallback_left=Mm(25),
-                    fallback_top=Mm(12),
-                    fallback_w=Mm(70),
-                    fallback_h=Mm(8),
-                    fallback_size=Pt(10),
-                )
 
-        replaced_category = replace_text_in_slide(
+        add_text_by_spec(
             slide,
-            ["{category}", "CATEGORY_SLOT", "{{ITEM_CATEGORY}}"],
             data["name"],
+            TEXT_SPECS["category"],
         )
-        if not replaced_category:
-            add_styled_textbox(
-                slide=slide,
-                slot_shape=category_slot,
-                text=data["name"],
-                fallback_left=Mm(15),
-                fallback_top=Mm(15),
-                fallback_w=Mm(130),
-                fallback_h=Mm(15),
-                fallback_size=Pt(24),
-            )
-
-        replaced_code = replace_text_in_slide(
+        add_text_by_spec(
             slide,
-            ["{code}", "CODE_SLOT", "{{ITEM_CODE}}"],
             data["code"],
+            TEXT_SPECS["code"],
         )
-        if not replaced_code:
-            add_styled_textbox(
-                slide=slide,
-                slot_shape=code_slot,
-                text=data["code"],
-                fallback_left=Mm(15),
-                fallback_top=Mm(30),
-                fallback_w=Mm(130),
-                fallback_h=Mm(15),
-                fallback_size=Pt(24),
-            )
 
-        # 템플릿 변환 이슈로 슬라이드번호 placeholder가 누락될 때만 폴백 숫자 표시
-        if page_slot and not has_slide_number_placeholder(slide):
-            add_styled_textbox(
-                slide=slide,
-                slot_shape=page_slot,
-                text=f"PAGE  | {page_no}",
-                fallback_left=Mm(10),
-                fallback_top=Mm(10),
-                fallback_w=Mm(40),
-                fallback_h=Mm(8),
-                fallback_size=Pt(10),
-            )
+        add_text_by_spec(
+            slide,
+            f"PAGE {page_no}",
+            TEXT_SPECS["page"],
+        )
         
         # RRP (표시만 함)
         if data.get('rrp'):
@@ -563,8 +598,11 @@ if selected_menu == '슬라이드 제작':
             
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("PPT 생성 및 다운로드", type="primary"):
-                ppt = create_pptx(st.session_state.product_list)
-                st.download_button("PPT 다운로드 (.pptx)", ppt, "BOSS_Golf_SpecSheet.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+                try:
+                    ppt = create_pptx(st.session_state.product_list)
+                    st.download_button("PPT 다운로드 (.pptx)", ppt, "BOSS_Golf_SpecSheet.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+                except Exception as e:
+                    st.error(f"PPT 생성 실패: {e}")
 
 
 elif selected_menu == '로고&아트워크 관리':
