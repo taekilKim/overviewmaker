@@ -1,471 +1,298 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Overviewer for BOSS GOLF</title>
-  <style>
-    :root {
-      --bg: #f7f7f5;
-      --panel: #ffffff;
-      --panel-subtle: #f3f3f1;
-      --text: #111113;
-      --muted: #6b6b70;
-      --line: #dfdfdc;
-      --brand: #987147;
-      --brand-ink: #6f4f2b;
-      --radius-lg: 16px;
-      --radius-md: 12px;
-      --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.04);
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: "Pretendard", "SUIT", "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: linear-gradient(180deg, #f0efeb 0%, var(--bg) 28%);
-      color: var(--text);
-    }
-
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      border-bottom: 1px solid rgba(17, 17, 19, 0.08);
-      backdrop-filter: blur(8px);
-      background: rgba(247, 247, 245, 0.88);
-    }
-
-    .topbar-inner {
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .brand-mark {
-      width: 30px;
-      height: 30px;
-      border-radius: 9px;
-      background: linear-gradient(145deg, #b08a5e, #8b663f);
-      color: #fff;
-      display: grid;
-      place-items: center;
-      font-weight: 700;
-      font-size: 13px;
-    }
-
-    .brand-title {
-      margin: 0;
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-
-    .brand-sub {
-      margin: 2px 0 0;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .container {
-      max-width: 1180px;
-      margin: 22px auto;
-      padding: 0 18px 24px;
-      display: grid;
-      grid-template-columns: 1.5fr 1fr;
-      gap: 18px;
-    }
-
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-
-    .card-head {
-      padding: 16px 18px;
-      border-bottom: 1px solid var(--line);
-      background: var(--panel-subtle);
-    }
-
-    .card-title {
-      margin: 0;
-      font-size: 15px;
-      font-weight: 700;
-    }
-
-    .card-desc {
-      margin: 6px 0 0;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .card-body {
-      padding: 16px 18px 18px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-
-    .field label {
-      font-size: 12px;
-      color: #3d3d41;
-      font-weight: 600;
-    }
-
-    input,
-    textarea,
-    select,
-    button {
-      width: 100%;
-      font: inherit;
-    }
-
-    input,
-    textarea,
-    select {
-      border: 1px solid #d7d7d2;
-      border-radius: var(--radius-md);
-      padding: 10px 11px;
-      font-size: 14px;
-      background: #fff;
-      color: var(--text);
-      outline: none;
-      transition: border-color 120ms ease, box-shadow 120ms ease;
-    }
-
-    input:focus,
-    textarea:focus,
-    select:focus {
-      border-color: var(--brand);
-      box-shadow: 0 0 0 3px rgba(152, 113, 71, 0.16);
-    }
-
-    textarea {
-      min-height: 84px;
-      resize: vertical;
-    }
-
-    .hint {
-      margin: 2px 0 0;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .drop {
-      border: 1px dashed #cbc8c2;
-      border-radius: var(--radius-md);
-      background: #fafaf9;
-      padding: 12px;
-    }
-
-    .actions {
-      margin-top: 12px;
-      display: flex;
-      gap: 10px;
-    }
-
-    .btn-primary {
-      border: 1px solid var(--brand-ink);
-      background: linear-gradient(180deg, #9f7a4e, #8a653d);
-      color: #fff;
-      border-radius: 12px;
-      padding: 11px 14px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .btn-primary:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .status {
-      margin-top: 10px;
-      font-size: 13px;
-      color: #2f2f33;
-      min-height: 20px;
-    }
-
-    .status.error { color: #b3261e; }
-    .status.success { color: #216e39; }
-
-    .preview-list {
-      margin-top: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .preview-chip {
-      background: #f4f4f2;
-      border: 1px solid #e1e1dd;
-      border-radius: 999px;
-      padding: 5px 9px;
-      font-size: 12px;
-    }
-
-    .sticky-box {
-      position: sticky;
-      top: 80px;
-    }
-
-    .kpi {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .kpi > div {
-      background: #fafaf8;
-      border: 1px solid #e5e4df;
-      border-radius: 12px;
-      padding: 10px;
-    }
-
-    .kpi-title { margin: 0; font-size: 11px; color: var(--muted); }
-    .kpi-val { margin: 3px 0 0; font-size: 15px; font-weight: 700; }
-
-    @media (max-width: 980px) {
-      .container { grid-template-columns: 1fr; }
-      .sticky-box { position: static; }
-    }
-
-    @media (max-width: 640px) {
-      .grid { grid-template-columns: 1fr; }
-      .topbar-inner { padding: 12px 14px; }
-      .container { margin-top: 14px; padding: 0 14px 18px; }
-    }
-  </style>
-</head>
-<body>
-  <header class="topbar">
-    <div class="topbar-inner">
-      <div class="brand">
-        <div class="brand-mark">OG</div>
-        <div>
-          <h1 class="brand-title">Overviewer for BOSS GOLF</h1>
-          <p class="brand-sub">PPT Spec Sheet Generator</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Overviewer for BOSS GOLF</title>
+    <link
+      rel="stylesheet"
+      as="style"
+      crossorigin
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: [
+                "Pretendard",
+                "Inter",
+                "ui-sans-serif",
+                "system-ui",
+                "-apple-system",
+                "BlinkMacSystemFont",
+                "Segoe UI",
+                "Roboto",
+                "Helvetica Neue",
+                "Arial",
+                "sans-serif",
+              ],
+            },
+            colors: {
+              border: "hsl(214.3 31.8% 91.4%)",
+              input: "hsl(214.3 31.8% 91.4%)",
+              ring: "hsl(215 20.2% 65.1%)",
+              background: "hsl(0 0% 100%)",
+              foreground: "hsl(222.2 84% 4.9%)",
+              primary: {
+                DEFAULT: "hsl(222.2 47.4% 11.2%)",
+                foreground: "hsl(210 40% 98%)",
+              },
+              muted: {
+                DEFAULT: "hsl(210 40% 96.1%)",
+                foreground: "hsl(215.4 16.3% 46.9%)",
+              },
+              card: {
+                DEFAULT: "hsl(0 0% 100%)",
+                foreground: "hsl(222.2 84% 4.9%)",
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        background-color: #ffffff;
+        color: #020617;
+        font-family: "Pretendard", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <header class="w-full h-16 px-4 md:px-8 border-b border-border flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-40">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-primary text-primary-foreground flex items-center justify-center font-bold tracking-tighter text-xs rounded-md shadow-sm">BG</div>
+        <div class="flex flex-col justify-center">
+          <h1 class="text-lg font-bold tracking-tight leading-none">
+            Anywear <span class="font-normal text-slate-500 text-sm ml-1">for BOSS GOLF</span>
+          </h1>
         </div>
       </div>
-    </div>
-  </header>
-
-  <main class="container">
-    <section class="card">
-      <div class="card-head">
-        <h2 class="card-title">Generate Slide</h2>
-        <p class="card-desc">기존 Streamlit 입력 구조를 웹으로 옮긴 화면입니다. 값 입력 후 생성 버튼을 누르면 Render API로 요청하고 PPT를 다운로드합니다.</p>
+      <div class="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-full border border-slate-200 bg-white text-slate-700 text-sm font-medium">
+        Overviewer
       </div>
-      <div class="card-body">
-        <div class="field">
-          <label for="apiBase">API Base URL</label>
-          <input id="apiBase" value="https://overviewmaker.onrender.com" />
-          <p class="hint">Render 백엔드 URL을 입력하세요. 예: https://overviewmaker.onrender.com</p>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-[fadeIn_0.3s_ease-out]">
+      <section class="lg:col-span-2 rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-border bg-slate-50">
+          <h2 class="text-base font-semibold text-slate-900">PPT 생성</h2>
+          <p class="mt-1 text-xs text-slate-500">Streamlit 입력 구조를 그대로 유지한 웹 UI입니다.</p>
         </div>
 
-        <div class="grid">
-          <div class="field">
-            <label for="season_item">시즌 아이템명</label>
-            <input id="season_item" value="JETSET LUXE" />
+        <div class="p-5 space-y-4">
+          <div>
+            <label for="apiBase" class="block text-xs font-medium text-slate-600 mb-1.5">API Base URL</label>
+            <input id="apiBase" value="https://overviewmaker.onrender.com" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
           </div>
-          <div class="field">
-            <label for="season_color">시즌 색상</label>
-            <input id="season_color" value="#000000" />
-          </div>
-          <div class="field">
-            <label for="name">카테고리</label>
-            <input id="name" value="MEN'S T-SHIRTS" />
-          </div>
-          <div class="field">
-            <label for="code">품번</label>
-            <input id="code" value="MFTS-02" />
-          </div>
-          <div class="field">
-            <label for="logo">로고 파일명</label>
-            <input id="logo" value="선택 없음" />
-          </div>
-          <div class="field">
-            <label for="artworks">아트워크 파일명들(콤마)</label>
-            <input id="artworks" placeholder="art1.png,art2.png" />
-          </div>
-        </div>
 
-        <div class="field">
-          <label for="color_names">컬러 이름들(콤마)</label>
-          <input id="color_names" placeholder="BLACK,BEIGE" />
-        </div>
-
-        <div class="field drop">
-          <label for="main_image">메인 이미지</label>
-          <input id="main_image" type="file" accept=".png,.jpg,.jpeg" />
-          <p class="hint" id="mainImageHint">아직 파일이 선택되지 않았습니다.</p>
-        </div>
-
-        <div class="field drop">
-          <label for="color_images">컬러웨이 이미지들</label>
-          <input id="color_images" type="file" accept=".png,.jpg,.jpeg" multiple />
-          <div id="colorPreview" class="preview-list"></div>
-        </div>
-
-        <div class="actions">
-          <button class="btn-primary" id="generateBtn">PPT 생성 및 다운로드</button>
-        </div>
-        <div id="status" class="status"></div>
-      </div>
-    </section>
-
-    <aside class="sticky-box">
-      <section class="card">
-        <div class="card-head">
-          <h2 class="card-title">Request Summary</h2>
-          <p class="card-desc">생성 전 입력값을 빠르게 확인하는 요약 패널입니다.</p>
-        </div>
-        <div class="card-body">
-          <div class="kpi">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <p class="kpi-title">Colorway Count</p>
-              <p id="kColorCount" class="kpi-val">0</p>
+              <label for="season_item" class="block text-xs font-medium text-slate-600 mb-1.5">시즌 아이템명</label>
+              <input id="season_item" value="JETSET LUXE" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
             </div>
             <div>
-              <p class="kpi-title">Artwork Count</p>
-              <p id="kArtworkCount" class="kpi-val">0</p>
+              <label for="season_color" class="block text-xs font-medium text-slate-600 mb-1.5">시즌 색상</label>
+              <input id="season_color" value="#000000" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+            <div>
+              <label for="name" class="block text-xs font-medium text-slate-600 mb-1.5">카테고리</label>
+              <input id="name" value="MEN'S T-SHIRTS" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+            <div>
+              <label for="code" class="block text-xs font-medium text-slate-600 mb-1.5">품번</label>
+              <input id="code" value="MFTS-02" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+            <div>
+              <label for="logo" class="block text-xs font-medium text-slate-600 mb-1.5">로고 파일명</label>
+              <input id="logo" value="선택 없음" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+            <div>
+              <label for="artworks" class="block text-xs font-medium text-slate-600 mb-1.5">아트워크 파일명들(콤마)</label>
+              <input id="artworks" placeholder="art1.png,art2.png" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
             </div>
           </div>
-          <div class="field" style="margin-top: 12px; margin-bottom: 0;">
-            <label>생성 파일명</label>
-            <input value="BOSS_Golf_SpecSheet.pptx" readonly />
+
+          <div>
+            <label for="color_names" class="block text-xs font-medium text-slate-600 mb-1.5">컬러 이름들(콤마)</label>
+            <input id="color_names" placeholder="BLACK,BEIGE" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+          </div>
+
+          <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
+            <label for="main_image" class="block text-xs font-medium text-slate-700 mb-1.5">메인 이미지</label>
+            <input id="main_image" type="file" accept=".png,.jpg,.jpeg" class="w-full text-sm" />
+            <p id="mainImageHint" class="mt-1.5 text-xs text-slate-500">아직 파일이 선택되지 않았습니다.</p>
+          </div>
+
+          <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
+            <label for="color_images" class="block text-xs font-medium text-slate-700 mb-1.5">컬러웨이 이미지들</label>
+            <input id="color_images" type="file" accept=".png,.jpg,.jpeg" multiple class="w-full text-sm" />
+            <div id="colorPreview" class="mt-2 flex flex-wrap gap-2"></div>
+          </div>
+
+          <div class="pt-1">
+            <button id="generateBtn" class="w-full md:w-auto inline-flex justify-center items-center px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed">
+              PPT 생성 및 다운로드
+            </button>
+            <p id="status" class="mt-2 text-sm text-slate-600"></p>
           </div>
         </div>
       </section>
-    </aside>
-  </main>
 
-  <script>
-    const $ = (id) => document.getElementById(id);
+      <aside class="lg:col-span-1">
+        <div class="rounded-2xl border border-border bg-card shadow-sm overflow-hidden lg:sticky lg:top-24">
+          <div class="px-5 py-4 border-b border-border bg-slate-50">
+            <h3 class="text-sm font-semibold text-slate-900">요약</h3>
+            <p class="mt-1 text-xs text-slate-500">생성 전 입력값 체크</p>
+          </div>
+          <div class="p-5 space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p class="text-[11px] text-slate-500">Colorway Count</p>
+                <p id="kColorCount" class="mt-1 text-lg font-semibold text-slate-900">0</p>
+              </div>
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p class="text-[11px] text-slate-500">Artwork Count</p>
+                <p id="kArtworkCount" class="mt-1 text-lg font-semibold text-slate-900">0</p>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1.5">생성 파일명</label>
+              <input value="BOSS_Golf_SpecSheet.pptx" readonly class="w-full rounded-lg border border-input px-3 py-2 text-sm bg-slate-50 text-slate-600" />
+            </div>
+          </div>
+        </div>
+      </aside>
+    </main>
 
-    const mainImageInput = $("main_image");
-    const colorImagesInput = $("color_images");
-    const artworksInput = $("artworks");
-    const colorPreview = $("colorPreview");
-    const statusEl = $("status");
-    const kColorCount = $("kColorCount");
-    const kArtworkCount = $("kArtworkCount");
+    <script>
+      const $ = (id) => document.getElementById(id);
 
-    function setStatus(text, tone) {
-      statusEl.textContent = text;
-      statusEl.className = "status" + (tone ? ` ${tone}` : "");
-    }
+      const mainImageInput = $("main_image");
+      const colorImagesInput = $("color_images");
+      const artworksInput = $("artworks");
+      const colorPreview = $("colorPreview");
+      const statusEl = $("status");
+      const kColorCount = $("kColorCount");
+      const kArtworkCount = $("kArtworkCount");
 
-    function syncSummary() {
-      const colorFiles = colorImagesInput.files ? colorImagesInput.files.length : 0;
-      const artworkCount = (artworksInput.value || "")
-        .split(",")
-        .map((v) => v.trim())
-        .filter(Boolean).length;
-      kColorCount.textContent = String(colorFiles);
-      kArtworkCount.textContent = String(artworkCount);
-    }
-
-    mainImageInput.addEventListener("change", () => {
-      const f = mainImageInput.files && mainImageInput.files[0];
-      $("mainImageHint").textContent = f ? `선택됨: ${f.name}` : "아직 파일이 선택되지 않았습니다.";
-    });
-
-    colorImagesInput.addEventListener("change", () => {
-      colorPreview.innerHTML = "";
-      const files = colorImagesInput.files || [];
-      for (const f of files) {
-        const chip = document.createElement("span");
-        chip.className = "preview-chip";
-        chip.textContent = f.name;
-        colorPreview.appendChild(chip);
-      }
-      syncSummary();
-    });
-
-    artworksInput.addEventListener("input", syncSummary);
-
-    $("generateBtn").addEventListener("click", async () => {
-      const mainImage = mainImageInput.files && mainImageInput.files[0];
-      if (!mainImage) {
-        alert("메인 이미지 파일은 필수입니다.");
-        return;
+      function setStatus(text, tone) {
+        statusEl.textContent = text;
+        statusEl.className = "mt-2 text-sm ";
+        if (tone === "error") {
+          statusEl.className += "text-red-600";
+        } else if (tone === "success") {
+          statusEl.className += "text-emerald-600";
+        } else {
+          statusEl.className += "text-slate-600";
+        }
       }
 
-      const apiBase = $("apiBase").value.trim().replace(/\/$/, "");
-      const fd = new FormData();
-      fd.append("season_item", $("season_item").value || "");
-      fd.append("season_color", $("season_color").value || "#000000");
-      fd.append("name", $("name").value || "");
-      fd.append("code", $("code").value || "");
-      fd.append("logo", $("logo").value || "선택 없음");
-      fd.append("artworks", artworksInput.value || "");
-      fd.append("color_names", $("color_names").value || "");
-      fd.append("main_image", mainImage);
+      function syncSummary() {
+        const colorFiles = colorImagesInput.files ? colorImagesInput.files.length : 0;
+        const artworkCount = (artworksInput.value || "")
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean).length;
 
-      const colorFiles = colorImagesInput.files || [];
-      for (const f of colorFiles) fd.append("color_images", f);
+        kColorCount.textContent = String(colorFiles);
+        kArtworkCount.textContent = String(artworkCount);
+      }
 
-      const btn = $("generateBtn");
-      btn.disabled = true;
-      setStatus("생성 중...", "");
+      mainImageInput.addEventListener("change", () => {
+        const f = mainImageInput.files && mainImageInput.files[0];
+        $("mainImageHint").textContent = f ? `선택됨: ${f.name}` : "아직 파일이 선택되지 않았습니다.";
+      });
 
-      try {
-        const res = await fetch(`${apiBase}/api/generate`, {
-          method: "POST",
-          body: fd,
-        });
+      colorImagesInput.addEventListener("change", () => {
+        colorPreview.innerHTML = "";
+        const files = colorImagesInput.files || [];
+        for (const f of files) {
+          const chip = document.createElement("span");
+          chip.className = "inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700";
+          chip.textContent = f.name;
+          colorPreview.appendChild(chip);
+        }
+        syncSummary();
+      });
 
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`${res.status} ${text}`);
+      artworksInput.addEventListener("input", syncSummary);
+
+      $("generateBtn").addEventListener("click", async () => {
+        const mainImage = mainImageInput.files && mainImageInput.files[0];
+        if (!mainImage) {
+          alert("메인 이미지 파일은 필수입니다.");
+          return;
         }
 
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "BOSS_Golf_SpecSheet.pptx";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
+        const apiBase = $("apiBase").value.trim().replace(/\/$/, "");
+        const fd = new FormData();
+        fd.append("season_item", $("season_item").value || "");
+        fd.append("season_color", $("season_color").value || "#000000");
+        fd.append("name", $("name").value || "");
+        fd.append("code", $("code").value || "");
+        fd.append("logo", $("logo").value || "선택 없음");
+        fd.append("artworks", artworksInput.value || "");
+        fd.append("color_names", $("color_names").value || "");
+        fd.append("main_image", mainImage);
 
-        setStatus("완료: PPT 다운로드를 확인하세요.", "success");
-      } catch (e) {
-        setStatus(`실패: ${e.message}`, "error");
-      } finally {
-        btn.disabled = false;
-      }
-    });
+        const colorFiles = colorImagesInput.files || [];
+        for (const f of colorFiles) {
+          fd.append("color_images", f);
+        }
 
-    syncSummary();
-  </script>
-</body>
+        const btn = $("generateBtn");
+        btn.disabled = true;
+        setStatus("생성 중...", "");
+
+        try {
+          const res = await fetch(`${apiBase}/api/generate`, {
+            method: "POST",
+            body: fd,
+          });
+
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`${res.status} ${text}`);
+          }
+
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "BOSS_Golf_SpecSheet.pptx";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+
+          setStatus("완료: PPT 다운로드를 확인하세요.", "success");
+        } catch (e) {
+          setStatus(`실패: ${e.message}`, "error");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+
+      syncSummary();
+    </script>
+  </body>
 </html>
