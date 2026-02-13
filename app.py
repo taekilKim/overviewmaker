@@ -12,11 +12,7 @@ import io
 import os
 import time
 import math
-try:
-    from PIL import Image as PILImage
-    PIL_AVAILABLE = True
-except ImportError:
-    PIL_AVAILABLE = False
+import json
 
 # GitHub 라이브러리
 try:
@@ -31,6 +27,7 @@ SIDEBAR_LOGO = "assets/bossgolf.svg"
 LOGO_DIR = "assets/logos"
 ARTWORK_DIR = "assets/artworks"
 CSS_FILE = "style.css"
+ARTWORK_META_FILE = os.path.join(ARTWORK_DIR, "_meta.json")
 
 # --- 텍스트 좌표/스타일 스펙 (mm 기준) ---
 TEXT_SPECS = {
@@ -87,11 +84,42 @@ ARTWORK_DEFAULT_WIDTH_MM = 30.0
 ARTWORK_PORTRAIT_HEIGHT_MM = 20.0
 ARTWORK_SMALL_WIDTH_MM = 12.0
 ARTWORK_VERTICAL_GAP_MM = 5.0
+ARTWORK_MODE_DEFAULT = "default"
+ARTWORK_MODE_HORIZONTAL = "horizontal"
+ARTWORK_MODE_SMALL = "small"
+ARTWORK_MODE_LABEL_TO_VALUE = {
+    "기본": ARTWORK_MODE_DEFAULT,
+    "가로 타입": ARTWORK_MODE_HORIZONTAL,
+    "작은 아트워크": ARTWORK_MODE_SMALL,
+}
+ARTWORK_MODE_VALUE_TO_LABEL = {v: k for k, v in ARTWORK_MODE_LABEL_TO_VALUE.items()}
 
 # --- 유틸리티 함수 ---
 def init_folders():
     for folder in [LOGO_DIR, ARTWORK_DIR]:
         if not os.path.exists(folder): os.makedirs(folder)
+
+def load_artwork_meta():
+    if not os.path.exists(ARTWORK_META_FILE):
+        return {}
+    try:
+        with open(ARTWORK_META_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+def save_artwork_meta(meta):
+    with open(ARTWORK_META_FILE, "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False, indent=2)
+
+def get_artwork_mode(art_name, meta=None):
+    if meta is None:
+        meta = load_artwork_meta()
+    mode = meta.get(art_name, ARTWORK_MODE_DEFAULT)
+    if mode not in (ARTWORK_MODE_DEFAULT, ARTWORK_MODE_HORIZONTAL, ARTWORK_MODE_SMALL):
+        return ARTWORK_MODE_DEFAULT
+    return mode
 
 def load_css(file_name):
     if os.path.exists(file_name):
@@ -349,16 +377,6 @@ def format_color_name(name):
         return ""
     return str(name).strip().upper()
 
-def is_portrait_image(image_path):
-    if not PIL_AVAILABLE:
-        return False
-    try:
-        with PILImage.open(image_path) as img:
-            w, h = img.size
-            return h > w
-    except Exception:
-        return False
-
 def has_slide_number_placeholder(slide):
     for shp in slide.shapes:
         if not getattr(shp, "is_placeholder", False):
@@ -452,6 +470,7 @@ def create_pptx(products):
     if selected_layout is None:
         selected_layout = prs.slide_layouts[1] if len(prs.slide_layouts) > 1 else prs.slide_layouts[0]
     layout_anchors = find_layout_anchor(selected_layout)
+    artwork_meta = load_artwork_meta()
 
     for data in products:
         slide = prs.slides.add_slide(selected_layout)
@@ -515,35 +534,31 @@ def create_pptx(products):
             current_top = int(Mm(ARTWORK_START_TOP_MM))
             gap_emu = int(Mm(ARTWORK_VERTICAL_GAP_MM))
             for art_item in data['artworks']:
-                if isinstance(art_item, dict):
-                    art_name = art_item.get("name")
-                    is_small = bool(art_item.get("small"))
-                else:
-                    art_name = art_item
-                    is_small = False
+                art_name = art_item.get("name") if isinstance(art_item, dict) else art_item
                 p_art = os.path.join(ARTWORK_DIR, art_name)
                 if not os.path.exists(p_art):
                     continue
-                if is_small:
+                artwork_mode = get_artwork_mode(art_name, artwork_meta)
+                if artwork_mode == ARTWORK_MODE_SMALL:
                     art_pic = slide.shapes.add_picture(
                         p_art,
                         left=Mm(0),
                         top=Mm(0),
                         width=Mm(ARTWORK_SMALL_WIDTH_MM),
                     )
-                elif is_portrait_image(p_art):
+                elif artwork_mode == ARTWORK_MODE_HORIZONTAL:
                     art_pic = slide.shapes.add_picture(
                         p_art,
                         left=Mm(0),
                         top=Mm(0),
-                        height=Mm(ARTWORK_PORTRAIT_HEIGHT_MM),
+                        width=Mm(ARTWORK_DEFAULT_WIDTH_MM),
                     )
                 else:
                     art_pic = slide.shapes.add_picture(
                         p_art,
                         left=Mm(0),
                         top=Mm(0),
-                        width=Mm(ARTWORK_DEFAULT_WIDTH_MM),
+                        height=Mm(ARTWORK_PORTRAIT_HEIGHT_MM),
                     )
                 art_pic.left = int(Mm(ARTWORK_CENTER_X_MM) - (art_pic.width / 2))
                 art_pic.top = current_top
@@ -704,7 +719,6 @@ if selected_menu == '슬라이드 제작':
                 key="artwork_multiselect",
             )
 
-            prev_small = {item["name"]: item.get("small", False) for item in st.session_state.artwork_items}
             selected_set = set(selected_names)
             current_names = [item["name"] for item in st.session_state.artwork_items]
             current_set = set(current_names)
@@ -712,33 +726,25 @@ if selected_menu == '슬라이드 제작':
                 kept = [item for item in st.session_state.artwork_items if item["name"] in selected_set]
                 kept_names = {item["name"] for item in kept}
                 added_names = sorted([n for n in selected_names if n not in kept_names], key=str.casefold)
-                added = [{"name": n, "small": prev_small.get(n, False)} for n in added_names]
+                added = [{"name": n} for n in added_names]
                 st.session_state.artwork_items = kept + added
 
             if st.session_state.artwork_items:
                 st.caption("아트워크 미리보기 및 순서")
                 for idx, item in enumerate(st.session_state.artwork_items):
-                    row = st.columns([1.2, 3, 1.8, 0.8, 0.8])
+                    row = st.columns([1.2, 4, 0.8, 0.8])
                     with row[0]:
                         st.image(os.path.join(ARTWORK_DIR, item["name"]), width=70)
                     with row[1]:
                         st.write(item["name"])
                     with row[2]:
-                        small_val = st.checkbox(
-                            "작은 아트워크",
-                            value=item.get("small", False),
-                            key=f"art_small_{item['name']}",
-                            help="사이즈가 작은 아트워크인 경우에 체크",
-                        )
-                        st.session_state.artwork_items[idx]["small"] = small_val
-                    with row[3]:
                         if st.button("↑", key=f"art_up_{item['name']}", disabled=(idx == 0)):
                             st.session_state.artwork_items[idx - 1], st.session_state.artwork_items[idx] = (
                                 st.session_state.artwork_items[idx],
                                 st.session_state.artwork_items[idx - 1],
                             )
                             st.rerun()
-                    with row[4]:
+                    with row[3]:
                         if st.button("↓", key=f"art_down_{item['name']}", disabled=(idx == len(st.session_state.artwork_items) - 1)):
                             st.session_state.artwork_items[idx + 1], st.session_state.artwork_items[idx] = (
                                 st.session_state.artwork_items[idx],
@@ -748,7 +754,7 @@ if selected_menu == '슬라이드 제작':
             else:
                 st.caption("선택된 아트워크 없음")
 
-            selected_artworks = [dict(item) for item in st.session_state.artwork_items]
+            selected_artworks = [item["name"] for item in st.session_state.artwork_items]
 
         st.markdown("---")
         st.subheader("3. 컬러웨이 (Colorways)")
@@ -815,7 +821,7 @@ if selected_menu == '슬라이드 제작':
                     "main_image":main_img, 
                     "logo":s_logo, 
                     "artworks": selected_artworks,
-                    "artwork": selected_artworks[0]["name"] if selected_artworks else "선택 없음",
+                    "artwork": selected_artworks[0] if selected_artworks else "선택 없음",
                     "colors": colors_input
                 })
                 st.toast(f"'{p_code}' 대기열에 추가됨")
@@ -868,6 +874,11 @@ elif selected_menu == '로고&아트워크 관리':
     if uploaded and st.button("저장하기"):
         with st.spinner("저장 중..."):
             for f in uploaded: upload_file(f, target_dir)
+            if active_tab == '아트워크':
+                artwork_meta = load_artwork_meta()
+                for f in uploaded:
+                    artwork_meta.setdefault(f.name, ARTWORK_MODE_DEFAULT)
+                save_artwork_meta(artwork_meta)
         st.success("완료")
         time.sleep(1)
         st.rerun()
@@ -875,16 +886,48 @@ elif selected_menu == '로고&아트워크 관리':
     st.markdown("---")
     st.subheader("보유 파일 목록")
     files = get_files(target_dir)
+    artwork_meta = load_artwork_meta()
     
     if not files:
         st.info("파일이 없습니다.")
     else:
+        if active_tab == '아트워크':
+            files = sorted(files, key=str.casefold)
+            changed = False
+            for f in files:
+                if f not in artwork_meta:
+                    artwork_meta[f] = ARTWORK_MODE_DEFAULT
+                    changed = True
+            stale_keys = [k for k in artwork_meta.keys() if k not in files]
+            for k in stale_keys:
+                artwork_meta.pop(k, None)
+                changed = True
+            if changed:
+                save_artwork_meta(artwork_meta)
+
         cols = st.columns(5)
         for i, f in enumerate(files):
             with cols[i%5]:
                 st.image(os.path.join(target_dir, f), use_container_width=True)
                 st.caption(f)
+                if active_tab == '아트워크':
+                    current_mode = get_artwork_mode(f, artwork_meta)
+                    current_label = ARTWORK_MODE_VALUE_TO_LABEL.get(current_mode, "기본")
+                    selected_label = st.radio(
+                        "타입",
+                        options=["기본", "가로 타입", "작은 아트워크"],
+                        index=["기본", "가로 타입", "작은 아트워크"].index(current_label),
+                        key=f"art_mode_{f}",
+                        help="가로 타입: 가로로 긴 형태의 아트워크인 경우 선택해주세요",
+                    )
+                    selected_mode = ARTWORK_MODE_LABEL_TO_VALUE[selected_label]
+                    if selected_mode != current_mode:
+                        artwork_meta[f] = selected_mode
+                        save_artwork_meta(artwork_meta)
                 if st.button("삭제", key=f"del_{f}"):
                     delete_file_asset(f, target_dir)
+                    if active_tab == '아트워크':
+                        artwork_meta.pop(f, None)
+                        save_artwork_meta(artwork_meta)
                     time.sleep(1)
                     st.rerun()
