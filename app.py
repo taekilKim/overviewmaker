@@ -73,6 +73,13 @@ COLORWAY_IMAGE_TOP_MM = 120.0
 MAIN_IMAGE_CENTER_X_MM = 65.0
 MAIN_IMAGE_CENTER_Y_MM = 94.3
 MAIN_IMAGE_WIDTH_MM = 90.0
+LOGO_CENTER_X_MM = 143.8
+LOGO_CENTER_Y_MM = 55.3
+LOGO_HEIGHT_MM = 23.7
+ARTWORK_CENTER_X_MM = 143.8
+ARTWORK_START_TOP_MM = 78.4
+ARTWORK_WIDTH_MM = 33.0
+ARTWORK_VERTICAL_GAP_MM = 5.0
 
 # --- 유틸리티 함수 ---
 def init_folders():
@@ -477,22 +484,32 @@ def create_pptx(products):
         if data['logo'] and data['logo'] != "선택 없음":
             p_logo = os.path.join(LOGO_DIR, data['logo'])
             if os.path.exists(p_logo):
-                if layout_anchors.get("logo_box"):
-                    box = layout_anchors["logo_box"]
-                    slide.shapes.add_picture(p_logo, left=box.left, top=box.top, width=box.width, height=box.height)
-                else:
-                    slide.shapes.add_picture(p_logo, left=Mm(180), top=Mm(60), width=Mm(40))
+                logo_pic = slide.shapes.add_picture(
+                    p_logo,
+                    left=Mm(0),
+                    top=Mm(0),
+                    height=Mm(LOGO_HEIGHT_MM),
+                )
+                logo_pic.left = int(Mm(LOGO_CENTER_X_MM) - (logo_pic.width / 2))
+                logo_pic.top = int(Mm(LOGO_CENTER_Y_MM) - (logo_pic.height / 2))
         
-        # 아트워크 (첫 번째 선택된 것 배치)
+        # 아트워크 (여러 개 선택 가능, 위에서 아래로 스택)
         if data['artworks']:
-            first_art = data['artworks'][0]
-            p_art = os.path.join(ARTWORK_DIR, first_art)
-            if os.path.exists(p_art):
-                if layout_anchors.get("artwork_box"):
-                    box = layout_anchors["artwork_box"]
-                    slide.shapes.add_picture(p_art, left=box.left, top=box.top, width=box.width, height=box.height)
-                else:
-                    slide.shapes.add_picture(p_art, left=Mm(180), top=Mm(110), width=Mm(40))
+            current_top = int(Mm(ARTWORK_START_TOP_MM))
+            gap_emu = int(Mm(ARTWORK_VERTICAL_GAP_MM))
+            for art_name in data['artworks']:
+                p_art = os.path.join(ARTWORK_DIR, art_name)
+                if not os.path.exists(p_art):
+                    continue
+                art_pic = slide.shapes.add_picture(
+                    p_art,
+                    left=Mm(0),
+                    top=Mm(0),
+                    width=Mm(ARTWORK_WIDTH_MM),
+                )
+                art_pic.left = int(Mm(ARTWORK_CENTER_X_MM) - (art_pic.width / 2))
+                art_pic.top = current_top
+                current_top += art_pic.height + gap_emu
 
         # 컬러웨이
         sx, sy, w, g = 180, COLORWAY_IMAGE_TOP_MM, COLORWAY_IMAGE_WIDTH_MM, 5
