@@ -65,6 +65,8 @@ TEXT_SPECS = {
 COLORWAY_TWO_ITEMS_LABEL_START_LEFT_MM = 169.9
 COLORWAY_TWO_ITEMS_LABEL_TOP_MM = 114.8
 COLORWAY_TWO_ITEMS_LABEL_GAP_MM = 36.0
+COLORWAY_IMAGE_WIDTH_MM = 27.0
+COLORWAY_IMAGE_TOP_MM = 120.0
 
 # --- 유틸리티 함수 ---
 def init_folders():
@@ -475,11 +477,11 @@ def create_pptx(products):
                     slide.shapes.add_picture(p_art, left=Mm(180), top=Mm(110), width=Mm(40))
 
         # 컬러웨이
-        sx, sy, w, g = 180, 155, 30, 5
+        sx, sy, w, g = 180, COLORWAY_IMAGE_TOP_MM, COLORWAY_IMAGE_WIDTH_MM, 5
         if layout_anchors.get("color_label"):
             # 라벨 아래 우하단 영역을 시작점으로 사용
             sx = layout_anchors["color_label"].left / 36000.0
-            sy = 155
+            sy = COLORWAY_IMAGE_TOP_MM
         per_row = 3
         row_gap = 8
         img_h = 30
@@ -492,7 +494,7 @@ def create_pptx(products):
             cy = sy - (rows - 1 - row) * (img_h + row_gap + 10)
             cx = sx + (col * (w + g))
             if c['img']:
-                slide.shapes.add_picture(c['img'], left=Mm(cx), top=Mm(cy), width=Mm(w))
+                slide.shapes.add_picture(c['img'], left=Mm(cx), top=Mm(cy), width=Mm(COLORWAY_IMAGE_WIDTH_MM))
             # 1줄/2개 케이스: 지정 좌표에서 ①CAMEL 형식으로 라벨 표기
             if len(data['colors']) == 2 and rows == 1:
                 label = f"{circled_nums[i]}{(c.get('name') or '').upper()}"
@@ -529,6 +531,10 @@ load_css(CSS_FILE)
 
 if 'product_list' not in st.session_state:
     st.session_state.product_list = []
+if 'colorway_items' not in st.session_state:
+    st.session_state.colorway_items = []
+if 'colorway_sig' not in st.session_state:
+    st.session_state.colorway_sig = []
 
 # --- 1. 좌측 사이드바 ---
 with st.sidebar:
@@ -558,85 +564,119 @@ if selected_menu == '슬라이드 제작':
     
     # 탭 1: 입력
     with tab_editor:
-        # 폼 시작
-        with st.form("spec_form", clear_on_submit=False):
-            st.subheader("1. 기본 정보")
-            c1, c2 = st.columns([3, 1])
-            with c1:
-                season_item = st.text_input("시즌 아이템명", "JETSET LUXE")
-                season_color = st.color_picker("시즌 텍스트 색상", "#000000")
-                p_name = st.text_input("제품명", "MEN'S T-SHIRTS")
-                p_code = st.text_input("품번 (필수)", placeholder="예: BKFTM1581")
+        st.subheader("1. 기본 정보")
+        c1, c2 = st.columns([3, 1])
+        with c1:
+            season_item = st.text_input("시즌 아이템명", "JETSET LUXE")
+            season_color = st.color_picker("시즌 텍스트 색상", "#000000")
+            p_name = st.text_input("제품명", "MEN'S T-SHIRTS")
+            p_code = st.text_input("품번 (필수)", placeholder="예: BKFTM1581")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.subheader("2. 디자인 자산")
+        
+        main_img = st.file_uploader("메인 이미지", type=['png','jpg'], help="슬라이드 좌측에 크게 들어갈 이미지")
+        if main_img:
+            st.caption("메인 이미지 미리보기")
+            st.image(main_img, width=220)
+        
+        c3, c4 = st.columns(2)
+        with c3:
+            s_logo = st.selectbox("로고 선택", ["선택 없음"] + get_files(LOGO_DIR))
+        
+        with c4:
+            available_artworks = get_files(ARTWORK_DIR)
+            selected_artworks = []
             
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.subheader("2. 디자인 자산")
-            
-            # 메인 이미지
-            main_img = st.file_uploader("메인 이미지", type=['png','jpg'], help="슬라이드 좌측에 크게 들어갈 이미지")
-            
-            c3, c4 = st.columns(2)
-            with c3:
-                s_logo = st.selectbox("로고 선택", ["선택 없음"] + get_files(LOGO_DIR))
-            
-            with c4:
-                # 아트워크 다중 선택 (Popover)
-                available_artworks = get_files(ARTWORK_DIR)
-                selected_artworks = []
-                
-                with st.popover("아트워크 선택하기", use_container_width=True):
-                    if not available_artworks:
-                        st.warning("등록된 아트워크가 없습니다.")
-                    else:
-                        for art in available_artworks:
-                            ac1, ac2 = st.columns([1, 4])
-                            with ac1:
-                                is_checked = st.checkbox("V", key=f"chk_{art}", label_visibility="hidden")
-                            with ac2:
-                                st.image(os.path.join(ARTWORK_DIR, art), width=40)
-                                st.caption(art)
-                            if is_checked:
-                                selected_artworks.append(art)
-                
-                if selected_artworks:
-                    st.caption(f"선택됨: {', '.join(selected_artworks)}")
+            with st.popover("아트워크 선택하기", use_container_width=True):
+                if not available_artworks:
+                    st.warning("등록된 아트워크가 없습니다.")
                 else:
-                    st.caption("선택된 아트워크 없음")
+                    for art in available_artworks:
+                        ac1, ac2 = st.columns([1, 4])
+                        with ac1:
+                            is_checked = st.checkbox("V", key=f"chk_{art}", label_visibility="hidden")
+                        with ac2:
+                            st.image(os.path.join(ARTWORK_DIR, art), width=40)
+                            st.caption(art)
+                        if is_checked:
+                            selected_artworks.append(art)
+            
+            if selected_artworks:
+                st.caption(f"선택됨: {', '.join(selected_artworks)}")
+            else:
+                st.caption("선택된 아트워크 없음")
 
-            st.markdown("---")
-            st.subheader("3. 컬러웨이 (Colorways)")
-            
-            # 일괄 업로드
-            uploaded_colors = st.file_uploader("컬러웨이 이미지 일괄 업로드 (최대 4개)", type=['png','jpg'], accept_multiple_files=True)
-            colors_input = []
-            
-            if uploaded_colors:
-                st.info(f"{len(uploaded_colors)}개의 이미지가 선택되었습니다. 색상명을 입력해주세요.")
-                for idx, c_file in enumerate(uploaded_colors[:4]):
-                    col_card, col_input = st.columns([1, 4])
-                    with col_card:
-                        st.image(c_file, width=60)
-                    with col_input:
-                        c_name = st.text_input(f"색상명 {idx+1}", key=f"c_name_{idx}")
-                    colors_input.append({"img": c_file, "name": c_name})
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            # 제출
-            if st.form_submit_button("대기열에 추가", type="primary"):
-                if not p_code or not main_img:
-                    st.error("품번과 메인 이미지는 필수입니다.")
-                else:
-                    st.session_state.product_list.append({
-                        "season_item": season_item,
-                        "season_color": season_color,
-                        "name":p_name, "code":p_code, "rrp":"", 
-                        "main_image":main_img, 
-                        "logo":s_logo, 
-                        "artworks": selected_artworks,
-                        "artwork": selected_artworks[0] if selected_artworks else "선택 없음",
-                        "colors": colors_input
-                    })
-                    st.success(f"'{p_code}' 추가 완료!")
+        st.markdown("---")
+        st.subheader("3. 컬러웨이 (Colorways)")
+
+        uploaded_colors = st.file_uploader(
+            "컬러웨이 이미지 업로드 (최대 4개)",
+            type=['png','jpg'],
+            accept_multiple_files=True,
+            key="colorway_uploader"
+        )
+
+        current_sig = []
+        if uploaded_colors:
+            current_sig = [(f.name, getattr(f, "size", None)) for f in uploaded_colors[:4]]
+
+        if current_sig != st.session_state.colorway_sig:
+            st.session_state.colorway_items = []
+            for i, f in enumerate(uploaded_colors[:4] if uploaded_colors else []):
+                file_id = f"{f.name}:{getattr(f, 'size', 0)}:{i}"
+                st.session_state.colorway_items.append({"id": file_id, "file": f, "name": ""})
+            st.session_state.colorway_sig = current_sig
+
+        colors_input = []
+        if st.session_state.colorway_items:
+            st.info("업로드가 완료되었습니다. 색상명을 입력하고 필요하면 순서를 변경하세요.")
+            for idx, item in enumerate(st.session_state.colorway_items):
+                row = st.columns([1, 4, 1, 1])
+                with row[0]:
+                    st.image(item["file"], width=72)
+                with row[1]:
+                    name_val = st.text_input(
+                        f"색상명 {idx+1}",
+                        value=item["name"],
+                        key=f"cw_name_{item['id']}"
+                    )
+                    st.session_state.colorway_items[idx]["name"] = name_val
+                with row[2]:
+                    if st.button("↑", key=f"cw_up_{item['id']}", disabled=(idx == 0)):
+                        st.session_state.colorway_items[idx - 1], st.session_state.colorway_items[idx] = (
+                            st.session_state.colorway_items[idx],
+                            st.session_state.colorway_items[idx - 1],
+                        )
+                        st.rerun()
+                with row[3]:
+                    if st.button("↓", key=f"cw_down_{item['id']}", disabled=(idx == len(st.session_state.colorway_items) - 1)):
+                        st.session_state.colorway_items[idx + 1], st.session_state.colorway_items[idx] = (
+                            st.session_state.colorway_items[idx],
+                            st.session_state.colorway_items[idx + 1],
+                        )
+                        st.rerun()
+
+            colors_input = [{"img": item["file"], "name": item["name"]} for item in st.session_state.colorway_items]
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        if st.button("대기열에 추가", type="primary"):
+            if not p_code or not main_img:
+                st.error("품번과 메인 이미지는 필수입니다.")
+            else:
+                st.session_state.product_list.append({
+                    "season_item": season_item,
+                    "season_color": season_color,
+                    "name":p_name, "code":p_code, "rrp":"", 
+                    "main_image":main_img, 
+                    "logo":s_logo, 
+                    "artworks": selected_artworks,
+                    "artwork": selected_artworks[0] if selected_artworks else "선택 없음",
+                    "colors": colors_input
+                })
+                st.toast(f"'{p_code}' 대기열에 추가됨")
+                st.success(f"'{p_code}' 추가 완료!")
 
     # 탭 2: 대기열
     with tab_queue:
