@@ -62,6 +62,10 @@ TEXT_SPECS = {
     # page number is managed by slide master placeholder
 }
 
+COLORWAY_TWO_ITEMS_LABEL_START_LEFT_MM = 66.7
+COLORWAY_TWO_ITEMS_LABEL_TOP_MM = 45.2
+COLORWAY_TWO_ITEMS_LABEL_GAP_MM = 36.0
+
 # --- 유틸리티 함수 ---
 def init_folders():
     for folder in [LOGO_DIR, ARTWORK_DIR]:
@@ -284,6 +288,40 @@ def add_text_by_spec(slide, text, spec, color_override=None):
             pass
     return tb
 
+def add_text_at(slide, text, left_mm, top_mm, width_mm, height_mm, font_name, font_size_pt, color_hex="#000000", bold=False, align=PP_ALIGN.LEFT):
+    tb = slide.shapes.add_textbox(Mm(left_mm), Mm(top_mm), Mm(width_mm), Mm(height_mm))
+    tf = tb.text_frame
+    tf.clear()
+    tf.margin_left = 0
+    tf.margin_right = 0
+    tf.margin_top = 0
+    tf.margin_bottom = 0
+    tf.vertical_anchor = MSO_ANCHOR.TOP
+    tf.word_wrap = False
+    tf.auto_size = MSO_AUTO_SIZE.NONE
+    p = tf.paragraphs[0]
+    p.alignment = align
+    p.space_before = Pt(0)
+    p.space_after = Pt(0)
+    p.line_spacing = 1.0
+    run = p.add_run()
+    run.text = text
+    f = run.font
+    f.name = font_name
+    f.size = Pt(font_size_pt)
+    f.bold = bold
+    rgb = hex_to_rgbcolor(color_hex)
+    if rgb is not None:
+        f.color.rgb = rgb
+    rPr = run._r.get_or_add_rPr()
+    for tag in ("a:latin", "a:ea", "a:cs"):
+        node = rPr.find(qn(tag))
+        if node is None:
+            node = OxmlElement(tag)
+            rPr.append(node)
+        node.set("typeface", font_name)
+    return tb
+
 def has_slide_number_placeholder(slide):
     for shp in slide.shapes:
         if not getattr(shp, "is_placeholder", False):
@@ -446,6 +484,7 @@ def create_pptx(products):
         row_gap = 8
         img_h = 30
         rows = max(1, math.ceil(len(data['colors']) / per_row)) if data.get('colors') else 1
+        circled_nums = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
         for i, c in enumerate(data['colors']):
             row = i // per_row
             col = i % per_row
@@ -454,10 +493,27 @@ def create_pptx(products):
             cx = sx + (col * (w + g))
             if c['img']:
                 slide.shapes.add_picture(c['img'], left=Mm(cx), top=Mm(cy), width=Mm(w))
-            tb = slide.shapes.add_textbox(Mm(cx), Mm(cy + img_h + 2), Mm(w), Mm(10))
-            tb.text_frame.text = c['name']
-            tb.text_frame.paragraphs[0].font.size = Pt(9)
-            tb.text_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
+            # 1줄/2개 케이스: 지정 좌표에서 ①CAMEL 형식으로 라벨 표기
+            if len(data['colors']) == 2 and rows == 1:
+                label = f"{circled_nums[i]}{(c.get('name') or '').upper()}"
+                add_text_at(
+                    slide=slide,
+                    text=label,
+                    left_mm=COLORWAY_TWO_ITEMS_LABEL_START_LEFT_MM + (i * COLORWAY_TWO_ITEMS_LABEL_GAP_MM),
+                    top_mm=COLORWAY_TWO_ITEMS_LABEL_TOP_MM,
+                    width_mm=32.0,
+                    height_mm=5.0,
+                    font_name="Averta Light",
+                    font_size_pt=10,
+                    color_hex="#000000",
+                    bold=False,
+                    align=PP_ALIGN.LEFT,
+                )
+            else:
+                tb = slide.shapes.add_textbox(Mm(cx), Mm(cy + img_h + 2), Mm(w), Mm(10))
+                tb.text_frame.text = c['name']
+                tb.text_frame.paragraphs[0].font.size = Pt(9)
+                tb.text_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
             
     output = io.BytesIO()
     prs.save(output)
