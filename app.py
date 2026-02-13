@@ -12,6 +12,11 @@ import io
 import os
 import time
 import math
+try:
+    from PIL import Image as PILImage
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
 
 # GitHub 라이브러리
 try:
@@ -73,12 +78,14 @@ COLORWAY_IMAGE_TOP_MM = 120.0
 MAIN_IMAGE_CENTER_X_MM = 65.0
 MAIN_IMAGE_CENTER_Y_MM = 94.3
 MAIN_IMAGE_WIDTH_MM = 90.0
-LOGO_CENTER_X_MM = 143.8
-LOGO_CENTER_Y_MM = 55.3
+LOGO_CENTER_X_MM = 148.4
+LOGO_CENTER_Y_MM = 53.9
 LOGO_HEIGHT_MM = 23.7
-ARTWORK_CENTER_X_MM = 143.8
-ARTWORK_START_TOP_MM = 78.4
-ARTWORK_WIDTH_MM = 33.0
+ARTWORK_CENTER_X_MM = 148.4
+ARTWORK_START_TOP_MM = 77.2
+ARTWORK_DEFAULT_WIDTH_MM = 30.0
+ARTWORK_PORTRAIT_HEIGHT_MM = 20.0
+ARTWORK_SMALL_WIDTH_MM = 12.0
 ARTWORK_VERTICAL_GAP_MM = 5.0
 
 # --- 유틸리티 함수 ---
@@ -342,6 +349,16 @@ def format_color_name(name):
         return ""
     return str(name).strip().upper()
 
+def is_portrait_image(image_path):
+    if not PIL_AVAILABLE:
+        return False
+    try:
+        with PILImage.open(image_path) as img:
+            w, h = img.size
+            return h > w
+    except Exception:
+        return False
+
 def has_slide_number_placeholder(slide):
     for shp in slide.shapes:
         if not getattr(shp, "is_placeholder", False):
@@ -497,16 +514,37 @@ def create_pptx(products):
         if data['artworks']:
             current_top = int(Mm(ARTWORK_START_TOP_MM))
             gap_emu = int(Mm(ARTWORK_VERTICAL_GAP_MM))
-            for art_name in data['artworks']:
+            for art_item in data['artworks']:
+                if isinstance(art_item, dict):
+                    art_name = art_item.get("name")
+                    is_small = bool(art_item.get("small"))
+                else:
+                    art_name = art_item
+                    is_small = False
                 p_art = os.path.join(ARTWORK_DIR, art_name)
                 if not os.path.exists(p_art):
                     continue
-                art_pic = slide.shapes.add_picture(
-                    p_art,
-                    left=Mm(0),
-                    top=Mm(0),
-                    width=Mm(ARTWORK_WIDTH_MM),
-                )
+                if is_small:
+                    art_pic = slide.shapes.add_picture(
+                        p_art,
+                        left=Mm(0),
+                        top=Mm(0),
+                        width=Mm(ARTWORK_SMALL_WIDTH_MM),
+                    )
+                elif is_portrait_image(p_art):
+                    art_pic = slide.shapes.add_picture(
+                        p_art,
+                        left=Mm(0),
+                        top=Mm(0),
+                        height=Mm(ARTWORK_PORTRAIT_HEIGHT_MM),
+                    )
+                else:
+                    art_pic = slide.shapes.add_picture(
+                        p_art,
+                        left=Mm(0),
+                        top=Mm(0),
+                        width=Mm(ARTWORK_DEFAULT_WIDTH_MM),
+                    )
                 art_pic.left = int(Mm(ARTWORK_CENTER_X_MM) - (art_pic.width / 2))
                 art_pic.top = current_top
                 current_top += art_pic.height + gap_emu
@@ -602,6 +640,8 @@ if 'colorway_items' not in st.session_state:
     st.session_state.colorway_items = []
 if 'colorway_sig' not in st.session_state:
     st.session_state.colorway_sig = []
+if 'artwork_items' not in st.session_state:
+    st.session_state.artwork_items = []
 
 # --- 1. 좌측 사이드바 ---
 with st.sidebar:
@@ -649,30 +689,66 @@ if selected_menu == '슬라이드 제작':
         
         c3, c4 = st.columns(2)
         with c3:
-            s_logo = st.selectbox("로고 선택", ["선택 없음"] + get_files(LOGO_DIR))
+            logo_options = ["선택 없음"] + sorted(get_files(LOGO_DIR), key=str.casefold)
+            s_logo = st.selectbox("로고 선택", logo_options)
+            if s_logo != "선택 없음":
+                st.caption("로고 미리보기")
+                st.image(os.path.join(LOGO_DIR, s_logo), width=180)
         
         with c4:
-            available_artworks = get_files(ARTWORK_DIR)
-            selected_artworks = []
-            
-            with st.popover("아트워크 선택하기", use_container_width=True):
-                if not available_artworks:
-                    st.warning("등록된 아트워크가 없습니다.")
-                else:
-                    for art in available_artworks:
-                        ac1, ac2 = st.columns([1, 4])
-                        with ac1:
-                            is_checked = st.checkbox("V", key=f"chk_{art}", label_visibility="hidden")
-                        with ac2:
-                            st.image(os.path.join(ARTWORK_DIR, art), width=40)
-                            st.caption(art)
-                        if is_checked:
-                            selected_artworks.append(art)
-            
-            if selected_artworks:
-                st.caption(f"선택됨: {', '.join(selected_artworks)}")
+            available_artworks = sorted(get_files(ARTWORK_DIR), key=str.casefold)
+            selected_names = st.multiselect(
+                "아트워크 선택",
+                available_artworks,
+                default=[item["name"] for item in st.session_state.artwork_items if item["name"] in available_artworks],
+                key="artwork_multiselect",
+            )
+
+            prev_small = {item["name"]: item.get("small", False) for item in st.session_state.artwork_items}
+            selected_set = set(selected_names)
+            current_names = [item["name"] for item in st.session_state.artwork_items]
+            current_set = set(current_names)
+            if current_set != selected_set:
+                kept = [item for item in st.session_state.artwork_items if item["name"] in selected_set]
+                kept_names = {item["name"] for item in kept}
+                added_names = sorted([n for n in selected_names if n not in kept_names], key=str.casefold)
+                added = [{"name": n, "small": prev_small.get(n, False)} for n in added_names]
+                st.session_state.artwork_items = kept + added
+
+            if st.session_state.artwork_items:
+                st.caption("아트워크 미리보기 및 순서")
+                for idx, item in enumerate(st.session_state.artwork_items):
+                    row = st.columns([1.2, 3, 1.8, 0.8, 0.8])
+                    with row[0]:
+                        st.image(os.path.join(ARTWORK_DIR, item["name"]), width=70)
+                    with row[1]:
+                        st.write(item["name"])
+                    with row[2]:
+                        small_val = st.checkbox(
+                            "작은 아트워크",
+                            value=item.get("small", False),
+                            key=f"art_small_{item['name']}",
+                            help="사이즈가 작은 아트워크인 경우에 체크",
+                        )
+                        st.session_state.artwork_items[idx]["small"] = small_val
+                    with row[3]:
+                        if st.button("↑", key=f"art_up_{item['name']}", disabled=(idx == 0)):
+                            st.session_state.artwork_items[idx - 1], st.session_state.artwork_items[idx] = (
+                                st.session_state.artwork_items[idx],
+                                st.session_state.artwork_items[idx - 1],
+                            )
+                            st.rerun()
+                    with row[4]:
+                        if st.button("↓", key=f"art_down_{item['name']}", disabled=(idx == len(st.session_state.artwork_items) - 1)):
+                            st.session_state.artwork_items[idx + 1], st.session_state.artwork_items[idx] = (
+                                st.session_state.artwork_items[idx],
+                                st.session_state.artwork_items[idx + 1],
+                            )
+                            st.rerun()
             else:
                 st.caption("선택된 아트워크 없음")
+
+            selected_artworks = [dict(item) for item in st.session_state.artwork_items]
 
         st.markdown("---")
         st.subheader("3. 컬러웨이 (Colorways)")
@@ -739,7 +815,7 @@ if selected_menu == '슬라이드 제작':
                     "main_image":main_img, 
                     "logo":s_logo, 
                     "artworks": selected_artworks,
-                    "artwork": selected_artworks[0] if selected_artworks else "선택 없음",
+                    "artwork": selected_artworks[0]["name"] if selected_artworks else "선택 없음",
                     "colors": colors_input
                 })
                 st.toast(f"'{p_code}' 대기열에 추가됨")
@@ -761,7 +837,13 @@ if selected_menu == '슬라이드 제작':
                 with st.expander(f"{idx+1}. {item['code']} - {item['name']}"):
                     cols = st.columns([1, 4])
                     cols[0].image(item['main_image'])
-                    art_str = ", ".join(item['artworks']) if item.get('artworks') else "-"
+                    artwork_names = []
+                    for art in item.get('artworks', []):
+                        if isinstance(art, dict):
+                            artwork_names.append(art.get("name", ""))
+                        else:
+                            artwork_names.append(str(art))
+                    art_str = ", ".join([n for n in artwork_names if n]) if artwork_names else "-"
                     cols[1].write(f"컬러: {len(item['colors'])}개 | 로고: {item['logo']} | 아트워크: {art_str}")
             
             st.markdown("<br>", unsafe_allow_html=True)
