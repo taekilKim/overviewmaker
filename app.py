@@ -1,6 +1,5 @@
 import streamlit as st
 import streamlit_shadcn_ui as ui
-import streamlit_antd_components as sac
 from pptx import Presentation
 from pptx.util import Mm, Pt
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR, MSO_AUTO_SIZE
@@ -666,11 +665,11 @@ with st.sidebar:
         st.header("BOSS Golf")
     
     st.markdown("---")
-
-    selected_menu = sac.menu([
-        sac.MenuItem('슬라이드 제작', icon='file-earmark-plus'),
-        sac.MenuItem('로고&아트워크 관리', icon='image'),
-    ], size='sm', color='dark', open_all=True)
+    selected_menu = ui.tabs(
+        options=['슬라이드 제작', '로고&아트워크 관리'],
+        defaultValue='슬라이드 제작',
+        key="sidebar_menu",
+    )
 
     # [수정] 깃허브 연동 상태 표시 제거됨
 
