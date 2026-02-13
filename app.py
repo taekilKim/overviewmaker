@@ -309,6 +309,17 @@ def strip_vendor_watermark(prs):
             if any(marker in txt for marker in markers):
                 shp.text_frame.clear()
 
+def ensure_slide_number_enabled(prs):
+    """
+    Force the presentation-level header/footer flag so slide-number placeholders
+    on layouts are shown without requiring 'Apply to All' in PowerPoint UI.
+    """
+    hf = prs._element.find(qn("p:hf"))
+    if hf is None:
+        hf = OxmlElement("p:hf")
+        prs._element.append(hf)
+    hf.set("sldNum", "1")
+
 # --- 깃허브 연동 ---
 def get_github_repo():
     if not GITHUB_AVAILABLE: return None
@@ -351,6 +362,7 @@ def create_pptx(products):
     if os.path.exists(TEMPLATE_FILE): prs = Presentation(TEMPLATE_FILE)
     else: prs = Presentation()
     strip_vendor_watermark(prs)
+    ensure_slide_number_enabled(prs)
 
     # 레이아웃 선택 우선순위:
     # 1) matchingName = default (요청사항 우선)
