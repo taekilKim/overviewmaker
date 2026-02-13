@@ -7,6 +7,7 @@ from pptx.enum.text import PP_ALIGN
 import io
 import os
 import time
+import math
 
 # GitHub 라이브러리
 try:
@@ -35,6 +36,104 @@ def load_css(file_name):
 def get_files(folder_path):
     if not os.path.exists(folder_path): return []
     return [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.svg'))]
+
+def get_layout_by_matching_name(prs, targets):
+    target_set = {t.strip().lower() for t in targets}
+    for layout in prs.slide_layouts:
+        matching_name = (layout._element.get("matchingName") or "").strip().lower()
+        if matching_name in target_set:
+            return layout
+    return None
+
+def get_layout_by_name(prs, targets):
+    target_set = {t.strip().lower() for t in targets}
+    for layout in prs.slide_layouts:
+        if (layout.name or "").strip().lower() in target_set:
+            return layout
+    return None
+
+def get_text(shape):
+    if not getattr(shape, "has_text_frame", False):
+        return ""
+    return (shape.text or "").strip()
+
+def find_layout_anchor(layout):
+    anchors = {}
+    text_shapes = []
+    empty_shapes = []
+
+    for shp in layout.shapes:
+        txt = get_text(shp)
+        if txt:
+            text_shapes.append(shp)
+        elif getattr(shp, "shape_type", None) is not None:
+            empty_shapes.append(shp)
+
+    for shp in text_shapes:
+        txt = get_text(shp).upper()
+        if "LOGO" in txt:
+            anchors["logo_label"] = shp
+        if "ARTWORK" in txt:
+            anchors["artwork_label"] = shp
+        if "RRP" in txt:
+            anchors["rrp_label"] = shp
+        if "COLORWAY" in txt:
+            anchors["color_label"] = shp
+
+    # 텍스트 라벨 근처의 빈 도형을 이미지 박스로 사용
+    def nearest_empty(label_key):
+        label = anchors.get(label_key)
+        if not label:
+            return None
+        lx = label.left + (label.width // 2)
+        ly = label.top + (label.height // 2)
+        candidates = []
+        for shp in empty_shapes:
+            w, h = shp.width, shp.height
+            if w <= 0 or h <= 0:
+                continue
+            # 너무 작은 가이드/점은 제외
+            if w < Mm(20) or h < Mm(10):
+                continue
+            sx = shp.left + (w // 2)
+            sy = shp.top + (h // 2)
+            dist = abs(sx - lx) + abs(sy - ly)
+            candidates.append((dist, shp))
+        return min(candidates, key=lambda x: x[0])[1] if candidates else None
+
+    anchors["logo_box"] = nearest_empty("logo_label")
+    anchors["artwork_box"] = nearest_empty("artwork_label")
+    return anchors
+
+def find_text_slot(layout, keywords):
+    keyset = [k.upper() for k in keywords]
+    for shp in layout.shapes:
+        txt = get_text(shp).upper()
+        if not txt:
+            continue
+        if any(k in txt for k in keyset):
+            return shp
+    return None
+
+def replace_text_in_slide(slide, tokens, value, font_size=Pt(24), bold=True):
+    token_set = [t.upper() for t in tokens]
+    for shp in slide.shapes:
+        if not getattr(shp, "has_text_frame", False):
+            continue
+        current = (shp.text or "")
+        up = current.upper()
+        if any(t in up for t in token_set):
+            shp.text_frame.clear()
+            shp.text_frame.text = value
+            p = shp.text_frame.paragraphs[0]
+            p.font.size = font_size
+            p.font.bold = bold
+            try:
+                p.font.name = "Pretendard"
+            except:
+                pass
+            return True
+    return False
 
 # --- 깃허브 연동 ---
 def get_github_repo():
@@ -78,21 +177,96 @@ def create_pptx(products):
     if os.path.exists(TEMPLATE_FILE): prs = Presentation(TEMPLATE_FILE)
     else: prs = Presentation()
 
-    for data in products:
-        try: slide = prs.slides.add_slide(prs.slide_layouts[1])
-        except: slide = prs.slides.add_slide(prs.slide_layouts[0])
+    # 레이아웃 선택 우선순위:
+    # 1) matchingName = default (요청사항 우선)
+    # 2) matchingName = title
+    # 3) 표시 이름 = HB Title / Content, CUSTOM
+    # 3) 기존 인덱스 폴백
+    selected_layout = (
+        get_layout_by_matching_name(prs, ["default"])
+        or get_layout_by_matching_name(prs, ["title"])
+        or get_layout_by_name(prs, ["HB Title / Content", "CUSTOM"])
+    )
+    if selected_layout is None:
+        selected_layout = prs.slide_layouts[1] if len(prs.slide_layouts) > 1 else prs.slide_layouts[0]
+    layout_anchors = find_layout_anchor(selected_layout)
+    season_slot = find_text_slot(selected_layout, ["SEASON", "ITEM", "JETSET", "{{SEASON_ITEM}}"])
+    category_slot = find_text_slot(selected_layout, ["CATEGORY", "ITEM CATEGORY", "MEN'S", "{{ITEM_CATEGORY}}"])
+    code_slot = find_text_slot(selected_layout, ["STYLE", "CODE", "품번", "{{ITEM_CODE}}"])
 
-        # 텍스트
-        tb = slide.shapes.add_textbox(Mm(15), Mm(15), Mm(130), Mm(30))
-        tb.text_frame.text = f"{data['name']}\n{data['code']}"
-        tb.text_frame.paragraphs[0].font.size = Pt(24)
-        tb.text_frame.paragraphs[0].font.bold = True
-        try: tb.text_frame.paragraphs[0].font.name = 'Pretendard'
-        except: pass
+    for data in products:
+        slide = prs.slides.add_slide(selected_layout)
+
+        # 텍스트: 시즌 아이템명 + 타이틀 2줄(카테고리/품번)
+        season_name = data.get("season_item", "")
+        if season_name:
+            replaced = replace_text_in_slide(
+                slide,
+                ["{season}", "{{SEASON_ITEM}}", "SEASON_SLOT"],
+                season_name,
+                font_size=Pt(10),
+                bold=True,
+            )
+            if not replaced:
+                if season_slot:
+                    season_tb = slide.shapes.add_textbox(season_slot.left, season_slot.top, season_slot.width, season_slot.height)
+                else:
+                    season_tb = slide.shapes.add_textbox(Mm(25), Mm(12), Mm(70), Mm(8))
+                season_tb.text_frame.text = season_name
+                season_tb.text_frame.paragraphs[0].font.size = Pt(10)
+                season_tb.text_frame.paragraphs[0].font.bold = True
+
+        replaced_cat = replace_text_in_slide(
+            slide,
+            ["{category}", "{{ITEM_CATEGORY}}", "CATEGORY_SLOT"],
+            data["name"],
+            font_size=Pt(24),
+            bold=True,
+        )
+        replaced_code = replace_text_in_slide(
+            slide,
+            ["{code}", "{{ITEM_CODE}}", "CODE_SLOT"],
+            data["code"],
+            font_size=Pt(24),
+            bold=True,
+        )
+
+        if not (replaced_cat and replaced_code):
+            if category_slot and code_slot:
+                cat_tb = slide.shapes.add_textbox(category_slot.left, category_slot.top, category_slot.width, category_slot.height)
+                cat_tb.text_frame.text = data["name"]
+                cat_tb.text_frame.paragraphs[0].font.size = Pt(24)
+                cat_tb.text_frame.paragraphs[0].font.bold = True
+
+                code_tb = slide.shapes.add_textbox(code_slot.left, code_slot.top, code_slot.width, code_slot.height)
+                code_tb.text_frame.text = data["code"]
+                code_tb.text_frame.paragraphs[0].font.size = Pt(24)
+                code_tb.text_frame.paragraphs[0].font.bold = True
+                try:
+                    cat_tb.text_frame.paragraphs[0].font.name = 'Pretendard'
+                    code_tb.text_frame.paragraphs[0].font.name = 'Pretendard'
+                except:
+                    pass
+            else:
+                title_tb = slide.shapes.add_textbox(Mm(15), Mm(15), Mm(130), Mm(30))
+                title_tb.text_frame.text = f"{data['name']}\n{data['code']}"
+                title_tb.text_frame.paragraphs[0].font.size = Pt(24)
+                title_tb.text_frame.paragraphs[0].font.bold = True
+                if len(title_tb.text_frame.paragraphs) > 1:
+                    title_tb.text_frame.paragraphs[1].font.size = Pt(24)
+                    title_tb.text_frame.paragraphs[1].font.bold = True
+                try:
+                    title_tb.text_frame.paragraphs[0].font.name = 'Pretendard'
+                    if len(title_tb.text_frame.paragraphs) > 1:
+                        title_tb.text_frame.paragraphs[1].font.name = 'Pretendard'
+                except:
+                    pass
         
         # RRP (표시만 함)
         if data.get('rrp'):
-            rrp = slide.shapes.add_textbox(Mm(250), Mm(15), Mm(50), Mm(15))
+            rrp_left = layout_anchors["rrp_label"].left if layout_anchors.get("rrp_label") else Mm(250)
+            rrp_top = layout_anchors["rrp_label"].top if layout_anchors.get("rrp_label") else Mm(15)
+            rrp = slide.shapes.add_textbox(rrp_left, rrp_top, Mm(50), Mm(15))
             rrp.text_frame.text = f"RRP : {data['rrp']}"
             rrp.text_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
 
@@ -103,20 +277,43 @@ def create_pptx(products):
         # 로고
         if data['logo'] and data['logo'] != "선택 없음":
             p_logo = os.path.join(LOGO_DIR, data['logo'])
-            if os.path.exists(p_logo): slide.shapes.add_picture(p_logo, left=Mm(180), top=Mm(60), width=Mm(40))
+            if os.path.exists(p_logo):
+                if layout_anchors.get("logo_box"):
+                    box = layout_anchors["logo_box"]
+                    slide.shapes.add_picture(p_logo, left=box.left, top=box.top, width=box.width, height=box.height)
+                else:
+                    slide.shapes.add_picture(p_logo, left=Mm(180), top=Mm(60), width=Mm(40))
         
         # 아트워크 (첫 번째 선택된 것 배치)
         if data['artworks']:
             first_art = data['artworks'][0]
             p_art = os.path.join(ARTWORK_DIR, first_art)
-            if os.path.exists(p_art): slide.shapes.add_picture(p_art, left=Mm(180), top=Mm(110), width=Mm(40))
+            if os.path.exists(p_art):
+                if layout_anchors.get("artwork_box"):
+                    box = layout_anchors["artwork_box"]
+                    slide.shapes.add_picture(p_art, left=box.left, top=box.top, width=box.width, height=box.height)
+                else:
+                    slide.shapes.add_picture(p_art, left=Mm(180), top=Mm(110), width=Mm(40))
 
         # 컬러웨이
         sx, sy, w, g = 180, 155, 30, 5
+        if layout_anchors.get("color_label"):
+            # 라벨 아래 우하단 영역을 시작점으로 사용
+            sx = layout_anchors["color_label"].left / 36000.0
+            sy = 155
+        per_row = 3
+        row_gap = 8
+        img_h = 30
+        rows = max(1, math.ceil(len(data['colors']) / per_row)) if data.get('colors') else 1
         for i, c in enumerate(data['colors']):
-            cx = sx + (i * (w + g))
-            if c['img']: slide.shapes.add_picture(c['img'], left=Mm(cx), top=Mm(sy), width=Mm(w))
-            tb = slide.shapes.add_textbox(Mm(cx), Mm(sy+32), Mm(w), Mm(10))
+            row = i // per_row
+            col = i % per_row
+            # 2줄 이상이면 아래줄 고정 후 위로 쌓기
+            cy = sy - (rows - 1 - row) * (img_h + row_gap + 10)
+            cx = sx + (col * (w + g))
+            if c['img']:
+                slide.shapes.add_picture(c['img'], left=Mm(cx), top=Mm(cy), width=Mm(w))
+            tb = slide.shapes.add_textbox(Mm(cx), Mm(cy + img_h + 2), Mm(w), Mm(10))
             tb.text_frame.text = c['name']
             tb.text_frame.paragraphs[0].font.size = Pt(9)
             tb.text_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
@@ -169,6 +366,7 @@ if selected_menu == '슬라이드 제작':
             st.subheader("1. 기본 정보")
             c1, c2 = st.columns([3, 1])
             with c1:
+                season_item = st.text_input("시즌 아이템명", "JETSET LUXE")
                 p_name = st.text_input("제품명", "MEN'S T-SHIRTS")
                 p_code = st.text_input("품번 (필수)", placeholder="예: BKFTM1581")
             
@@ -231,6 +429,7 @@ if selected_menu == '슬라이드 제작':
                     st.error("품번과 메인 이미지는 필수입니다.")
                 else:
                     st.session_state.product_list.append({
+                        "season_item": season_item,
                         "name":p_name, "code":p_code, "rrp":"", 
                         "main_image":main_img, 
                         "logo":s_logo, 
