@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from ppt_engine import generate_pptx
 
@@ -22,6 +22,16 @@ def _to_bytes_file(upload: UploadFile):
     buff = io.BytesIO(data)
     buff.seek(0)
     return buff
+
+
+@app.get("/")
+def root():
+    return JSONResponse({"ok": True, "service": "overviewmaker-api"})
+
+
+@app.get("/favicon.ico")
+def favicon():
+    return Response(status_code=204)
 
 
 @app.post("/api/generate")
