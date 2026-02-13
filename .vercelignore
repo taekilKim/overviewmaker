@@ -1,0 +1,9 @@
+.git
+.pycache
+*.pyc
+.DS_Store
+template.backup.pptx
+template.font-backup.pptx
+template.prev3.backup.pptx
+README_VERCEL.md
+.devcontainer
