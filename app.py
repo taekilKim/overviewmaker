@@ -478,9 +478,14 @@ def create_pptx(products):
 
         # 컬러웨이
         sx, sy, w, g = 180, COLORWAY_IMAGE_TOP_MM, COLORWAY_IMAGE_WIDTH_MM, 5
+        is_two_item_single_row = len(data.get('colors', [])) == 2
         if layout_anchors.get("color_label"):
             # 라벨 아래 우하단 영역을 시작점으로 사용
             sx = layout_anchors["color_label"].left / 36000.0
+            sy = COLORWAY_IMAGE_TOP_MM
+        # 2개/1줄은 라벨/이미지 기준점을 완전히 고정한다.
+        if is_two_item_single_row:
+            sx = COLORWAY_TWO_ITEMS_LABEL_START_LEFT_MM
             sy = COLORWAY_IMAGE_TOP_MM
         per_row = 3
         row_gap = 8
@@ -493,10 +498,13 @@ def create_pptx(products):
             # 2줄 이상이면 아래줄 고정 후 위로 쌓기
             cy = sy - (rows - 1 - row) * (img_h + row_gap + 10)
             cx = sx + (col * (w + g))
+            if is_two_item_single_row:
+                cx = COLORWAY_TWO_ITEMS_LABEL_START_LEFT_MM + (i * COLORWAY_TWO_ITEMS_LABEL_GAP_MM)
+                cy = COLORWAY_IMAGE_TOP_MM
             if c['img']:
                 slide.shapes.add_picture(c['img'], left=Mm(cx), top=Mm(cy), width=Mm(COLORWAY_IMAGE_WIDTH_MM))
             # 1줄/2개 케이스: 지정 좌표에서 ①CAMEL 형식으로 라벨 표기
-            if len(data['colors']) == 2 and rows == 1:
+            if is_two_item_single_row and rows == 1:
                 label = f"{circled_nums[i]}{(c.get('name') or '').upper()}"
                 add_text_at(
                     slide=slide,
