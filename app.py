@@ -868,6 +868,13 @@ elif selected_menu == '로고&아트워크 관리':
     
     active_tab = ui.tabs(options=['로고', '아트워크'], defaultValue='로고', key="asset_tabs")
     target_dir = LOGO_DIR if active_tab == '로고' else ARTWORK_DIR
+    if active_tab == '아트워크':
+        st.info(
+            "아트워크 타입 안내\n"
+            "- 기본: 높이 20mm (너비 자동)\n"
+            "- 가로 타입: 너비 30mm (높이 자동) - 가로로 긴 형태의 아트워크인 경우 선택해주세요\n"
+            "- 작은 아트워크: 너비 12mm (높이 자동) - 사이즈가 작은 아트워크인 경우 선택"
+        )
     
     st.subheader(f"{active_tab} 업로드")
     uploaded = st.file_uploader("파일 업로드", type=['png','jpg','svg'], accept_multiple_files=True)
@@ -918,7 +925,6 @@ elif selected_menu == '로고&아트워크 관리':
                         options=["기본", "가로 타입", "작은 아트워크"],
                         index=["기본", "가로 타입", "작은 아트워크"].index(current_label),
                         key=f"art_mode_{f}",
-                        help="가로 타입: 가로로 긴 형태의 아트워크인 경우 선택해주세요",
                     )
                     selected_mode = ARTWORK_MODE_LABEL_TO_VALUE[selected_label]
                     if selected_mode != current_mode:
