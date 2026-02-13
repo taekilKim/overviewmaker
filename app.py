@@ -3,7 +3,7 @@ import streamlit_shadcn_ui as ui
 import streamlit_antd_components as sac
 from pptx import Presentation
 from pptx.util import Mm, Pt
-from pptx.enum.text import PP_ALIGN
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR, MSO_AUTO_SIZE
 from pptx.enum.shapes import PP_PLACEHOLDER
 from pptx.dml.color import RGBColor
 from pptx.oxml.xmlchemy import OxmlElement
@@ -255,7 +255,18 @@ def add_text_by_spec(slide, text, spec, color_override=None):
     )
     tf = tb.text_frame
     tf.clear()
+    tf.margin_left = 0
+    tf.margin_right = 0
+    tf.margin_top = 0
+    tf.margin_bottom = 0
+    tf.vertical_anchor = MSO_ANCHOR.TOP
+    tf.word_wrap = False
+    tf.auto_size = MSO_AUTO_SIZE.NONE
     p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.LEFT
+    p.space_before = Pt(0)
+    p.space_after = Pt(0)
+    p.line_spacing = 1.0
     run = p.add_run()
     run.text = text
     f = run.font
