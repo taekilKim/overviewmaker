@@ -70,8 +70,8 @@ COLORWAY_THREE_ITEMS_LABEL_TOP_MM = 114.8
 COLORWAY_THREE_ITEMS_LABEL_GAP_MM = 28.0
 COLORWAY_IMAGE_WIDTH_MM = 27.0
 COLORWAY_IMAGE_TOP_MM = 120.0
-MAIN_IMAGE_LEFT_MM = 65.0
-MAIN_IMAGE_TOP_MM = 94.3
+MAIN_IMAGE_CENTER_X_MM = 65.0
+MAIN_IMAGE_CENTER_Y_MM = 94.3
 MAIN_IMAGE_WIDTH_MM = 90.0
 
 # --- 유틸리티 함수 ---
@@ -464,12 +464,14 @@ def create_pptx(products):
 
         # 메인 이미지
         if data['main_image']:
-            slide.shapes.add_picture(
+            main_pic = slide.shapes.add_picture(
                 data['main_image'],
-                left=Mm(MAIN_IMAGE_LEFT_MM),
-                top=Mm(MAIN_IMAGE_TOP_MM),
+                left=Mm(0),
+                top=Mm(0),
                 width=Mm(MAIN_IMAGE_WIDTH_MM),
             )
+            main_pic.left = int(Mm(MAIN_IMAGE_CENTER_X_MM) - (main_pic.width / 2))
+            main_pic.top = int(Mm(MAIN_IMAGE_CENTER_Y_MM) - (main_pic.height / 2))
         
         # 로고
         if data['logo'] and data['logo'] != "선택 없음":
