@@ -65,6 +65,9 @@ TEXT_SPECS = {
 COLORWAY_TWO_ITEMS_LABEL_START_LEFT_MM = 169.9
 COLORWAY_TWO_ITEMS_LABEL_TOP_MM = 114.8
 COLORWAY_TWO_ITEMS_LABEL_GAP_MM = 28.0
+COLORWAY_THREE_ITEMS_LABEL_START_LEFT_MM = 169.9
+COLORWAY_THREE_ITEMS_LABEL_TOP_MM = 114.8
+COLORWAY_THREE_ITEMS_LABEL_GAP_MM = 28.0
 COLORWAY_IMAGE_WIDTH_MM = 27.0
 COLORWAY_IMAGE_TOP_MM = 120.0
 
@@ -478,7 +481,9 @@ def create_pptx(products):
 
         # 컬러웨이
         sx, sy, w, g = 180, COLORWAY_IMAGE_TOP_MM, COLORWAY_IMAGE_WIDTH_MM, 5
-        is_two_item_single_row = len(data.get('colors', [])) == 2
+        color_count = len(data.get('colors', []))
+        is_two_item_single_row = color_count == 2
+        is_three_item_single_row = color_count == 3
         if layout_anchors.get("color_label"):
             # 라벨 아래 우하단 영역을 시작점으로 사용
             sx = layout_anchors["color_label"].left / 36000.0
@@ -486,6 +491,10 @@ def create_pptx(products):
         # 2개/1줄은 라벨/이미지 기준점을 완전히 고정한다.
         if is_two_item_single_row:
             sx = COLORWAY_TWO_ITEMS_LABEL_START_LEFT_MM
+            sy = COLORWAY_IMAGE_TOP_MM
+        # 3개/1줄도 고정 좌표 규칙을 사용한다.
+        if is_three_item_single_row:
+            sx = COLORWAY_THREE_ITEMS_LABEL_START_LEFT_MM
             sy = COLORWAY_IMAGE_TOP_MM
         per_row = 3
         row_gap = 8
@@ -501,6 +510,9 @@ def create_pptx(products):
             if is_two_item_single_row:
                 cx = COLORWAY_TWO_ITEMS_LABEL_START_LEFT_MM + (i * COLORWAY_TWO_ITEMS_LABEL_GAP_MM)
                 cy = COLORWAY_IMAGE_TOP_MM
+            if is_three_item_single_row:
+                cx = COLORWAY_THREE_ITEMS_LABEL_START_LEFT_MM + (i * COLORWAY_THREE_ITEMS_LABEL_GAP_MM)
+                cy = COLORWAY_IMAGE_TOP_MM
             if c['img']:
                 slide.shapes.add_picture(c['img'], left=Mm(cx), top=Mm(cy), width=Mm(COLORWAY_IMAGE_WIDTH_MM))
             # 1줄/2개 케이스: 지정 좌표에서 ①CAMEL 형식으로 라벨 표기
@@ -511,6 +523,21 @@ def create_pptx(products):
                     text=label,
                     left_mm=COLORWAY_TWO_ITEMS_LABEL_START_LEFT_MM + (i * COLORWAY_TWO_ITEMS_LABEL_GAP_MM),
                     top_mm=COLORWAY_TWO_ITEMS_LABEL_TOP_MM,
+                    width_mm=32.0,
+                    height_mm=5.0,
+                    font_name="Averta Light",
+                    font_size_pt=10,
+                    color_hex="#000000",
+                    bold=False,
+                    align=PP_ALIGN.LEFT,
+                )
+            elif is_three_item_single_row and rows == 1:
+                label = f"{circled_nums[i]}{(c.get('name') or '').upper()}"
+                add_text_at(
+                    slide=slide,
+                    text=label,
+                    left_mm=COLORWAY_THREE_ITEMS_LABEL_START_LEFT_MM + (i * COLORWAY_THREE_ITEMS_LABEL_GAP_MM),
+                    top_mm=COLORWAY_THREE_ITEMS_LABEL_TOP_MM,
                     width_mm=32.0,
                     height_mm=5.0,
                     font_name="Averta Light",
