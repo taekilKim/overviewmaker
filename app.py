@@ -333,7 +333,7 @@ def add_text_at(slide, text, left_mm, top_mm, width_mm, height_mm, font_name, fo
 def format_color_name(name):
     if not name:
         return ""
-    return " ".join(part.capitalize() for part in str(name).strip().split())
+    return str(name).strip().upper()
 
 def has_slide_number_placeholder(slide):
     for shp in slide.shapes:
