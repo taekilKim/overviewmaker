@@ -4,6 +4,8 @@ import streamlit_antd_components as sac
 from pptx import Presentation
 from pptx.util import Mm, Pt
 from pptx.enum.text import PP_ALIGN
+from pptx.enum.shapes import PP_PLACEHOLDER
+from pptx.dml.color import RGBColor
 import io
 import os
 import time
@@ -115,7 +117,18 @@ def find_text_slot(layout, keywords):
             return shp
     return None
 
-def replace_text_in_slide(slide, tokens, value, font_size=Pt(24), bold=True):
+def hex_to_rgbcolor(hex_color):
+    if not hex_color:
+        return None
+    v = hex_color.strip().lstrip("#")
+    if len(v) != 6:
+        return None
+    try:
+        return RGBColor(int(v[0:2], 16), int(v[2:4], 16), int(v[4:6], 16))
+    except:
+        return None
+
+def replace_text_in_slide(slide, tokens, value, color_override=None):
     token_set = [t.upper() for t in tokens]
     for shp in slide.shapes:
         if not getattr(shp, "has_text_frame", False):
@@ -123,17 +136,94 @@ def replace_text_in_slide(slide, tokens, value, font_size=Pt(24), bold=True):
         current = (shp.text or "")
         up = current.upper()
         if any(t in up for t in token_set):
+            style = extract_text_style(shp)
             shp.text_frame.clear()
             shp.text_frame.text = value
             p = shp.text_frame.paragraphs[0]
-            p.font.size = font_size
-            p.font.bold = bold
-            try:
-                p.font.name = "Pretendard"
-            except:
-                pass
+            apply_text_style(p, style)
+            if color_override is not None:
+                try:
+                    p.font.color.rgb = color_override
+                except:
+                    pass
             return True
     return False
+
+def extract_text_style(shape):
+    style = {"align": None, "size": None, "bold": None, "italic": None, "name": None, "color_rgb": None}
+    if not getattr(shape, "has_text_frame", False):
+        return style
+    tf = shape.text_frame
+    if not tf.paragraphs:
+        return style
+    p = tf.paragraphs[0]
+    style["align"] = p.alignment
+    f = p.font
+    style["size"] = f.size
+    style["bold"] = f.bold
+    style["italic"] = f.italic
+    style["name"] = f.name
+    try:
+        if f.color and getattr(f.color, "rgb", None):
+            style["color_rgb"] = f.color.rgb
+    except:
+        pass
+    return style
+
+def apply_text_style(paragraph, style):
+    if style.get("align") is not None:
+        paragraph.alignment = style["align"]
+    f = paragraph.font
+    if style.get("size") is not None:
+        f.size = style["size"]
+    if style.get("bold") is not None:
+        f.bold = style["bold"]
+    if style.get("italic") is not None:
+        f.italic = style["italic"]
+    if style.get("name"):
+        f.name = style["name"]
+    if style.get("color_rgb") is not None:
+        try:
+            f.color.rgb = style["color_rgb"]
+        except:
+            pass
+
+def add_styled_textbox(slide, slot_shape, text, fallback_left, fallback_top, fallback_w, fallback_h, fallback_size):
+    if slot_shape is not None:
+        tb = slide.shapes.add_textbox(slot_shape.left, slot_shape.top, slot_shape.width, slot_shape.height)
+        style = extract_text_style(slot_shape)
+    else:
+        tb = slide.shapes.add_textbox(fallback_left, fallback_top, fallback_w, fallback_h)
+        style = {"size": fallback_size, "bold": True}
+    tb.text_frame.text = text
+    p = tb.text_frame.paragraphs[0]
+    apply_text_style(p, style)
+    return tb
+
+def has_slide_number_placeholder(slide):
+    for shp in slide.shapes:
+        if not getattr(shp, "is_placeholder", False):
+            continue
+        try:
+            if shp.placeholder_format.type == PP_PLACEHOLDER.SLIDE_NUMBER:
+                return True
+        except:
+            continue
+    return False
+
+def strip_vendor_watermark(prs):
+    markers = ("VORLAGENBAUER", "ERSTELLT DURCH")
+    targets = list(prs.slide_masters)
+    for m in prs.slide_masters:
+        targets.extend(list(m.slide_layouts))
+
+    for container in targets:
+        for shp in container.shapes:
+            if not getattr(shp, "has_text_frame", False):
+                continue
+            txt = (shp.text or "").upper()
+            if any(marker in txt for marker in markers):
+                shp.text_frame.clear()
 
 # --- 깃허브 연동 ---
 def get_github_repo():
@@ -176,6 +266,7 @@ def delete_file_asset(filename, folder_path):
 def create_pptx(products):
     if os.path.exists(TEMPLATE_FILE): prs = Presentation(TEMPLATE_FILE)
     else: prs = Presentation()
+    strip_vendor_watermark(prs)
 
     # 레이아웃 선택 우선순위:
     # 1) matchingName = default (요청사항 우선)
@@ -190,77 +281,87 @@ def create_pptx(products):
     if selected_layout is None:
         selected_layout = prs.slide_layouts[1] if len(prs.slide_layouts) > 1 else prs.slide_layouts[0]
     layout_anchors = find_layout_anchor(selected_layout)
-    season_slot = find_text_slot(selected_layout, ["SEASON", "ITEM", "JETSET", "{{SEASON_ITEM}}"])
-    category_slot = find_text_slot(selected_layout, ["CATEGORY", "ITEM CATEGORY", "MEN'S", "{{ITEM_CATEGORY}}"])
-    code_slot = find_text_slot(selected_layout, ["STYLE", "CODE", "품번", "{{ITEM_CODE}}"])
 
-    for data in products:
+    # 레이아웃 슬롯(실패 시 폴백용 좌표/스타일 참조)
+    season_slot = find_text_slot(selected_layout, ["{SEASON}", "SEASON_SLOT", "{{SEASON_ITEM}}"])
+    category_slot = find_text_slot(selected_layout, ["{CATEGORY}", "CATEGORY_SLOT", "{{ITEM_CATEGORY}}"])
+    code_slot = find_text_slot(selected_layout, ["{CODE}", "CODE_SLOT", "{{ITEM_CODE}}"])
+    page_slot = find_text_slot(selected_layout, ["PAGE", "SLIDE", "‹#›", "<#>"])
+
+    base_slide_count = len(prs.slides)
+
+    for idx, data in enumerate(products):
         slide = prs.slides.add_slide(selected_layout)
+        page_no = base_slide_count + idx + 1
+        season_color = hex_to_rgbcolor(data.get("season_color"))
 
         # 텍스트: 시즌 아이템명 + 타이틀 2줄(카테고리/품번)
         season_name = data.get("season_item", "")
         if season_name:
             replaced = replace_text_in_slide(
                 slide,
-                ["{season}", "{{SEASON_ITEM}}", "SEASON_SLOT"],
+                ["{season}", "SEASON_SLOT", "{{SEASON_ITEM}}"],
                 season_name,
-                font_size=Pt(10),
-                bold=True,
+                color_override=season_color,
             )
             if not replaced:
-                if season_slot:
-                    season_tb = slide.shapes.add_textbox(season_slot.left, season_slot.top, season_slot.width, season_slot.height)
-                else:
-                    season_tb = slide.shapes.add_textbox(Mm(25), Mm(12), Mm(70), Mm(8))
-                season_tb.text_frame.text = season_name
-                season_tb.text_frame.paragraphs[0].font.size = Pt(10)
-                season_tb.text_frame.paragraphs[0].font.bold = True
+                add_styled_textbox(
+                    slide=slide,
+                    slot_shape=season_slot,
+                    text=season_name,
+                    fallback_left=Mm(25),
+                    fallback_top=Mm(12),
+                    fallback_w=Mm(70),
+                    fallback_h=Mm(8),
+                    fallback_size=Pt(10),
+                )
 
-        replaced_cat = replace_text_in_slide(
+        replaced_category = replace_text_in_slide(
             slide,
-            ["{category}", "{{ITEM_CATEGORY}}", "CATEGORY_SLOT"],
+            ["{category}", "CATEGORY_SLOT", "{{ITEM_CATEGORY}}"],
             data["name"],
-            font_size=Pt(24),
-            bold=True,
         )
+        if not replaced_category:
+            add_styled_textbox(
+                slide=slide,
+                slot_shape=category_slot,
+                text=data["name"],
+                fallback_left=Mm(15),
+                fallback_top=Mm(15),
+                fallback_w=Mm(130),
+                fallback_h=Mm(15),
+                fallback_size=Pt(24),
+            )
+
         replaced_code = replace_text_in_slide(
             slide,
-            ["{code}", "{{ITEM_CODE}}", "CODE_SLOT"],
+            ["{code}", "CODE_SLOT", "{{ITEM_CODE}}"],
             data["code"],
-            font_size=Pt(24),
-            bold=True,
         )
+        if not replaced_code:
+            add_styled_textbox(
+                slide=slide,
+                slot_shape=code_slot,
+                text=data["code"],
+                fallback_left=Mm(15),
+                fallback_top=Mm(30),
+                fallback_w=Mm(130),
+                fallback_h=Mm(15),
+                fallback_size=Pt(24),
+            )
 
-        if not (replaced_cat and replaced_code):
-            if category_slot and code_slot:
-                cat_tb = slide.shapes.add_textbox(category_slot.left, category_slot.top, category_slot.width, category_slot.height)
-                cat_tb.text_frame.text = data["name"]
-                cat_tb.text_frame.paragraphs[0].font.size = Pt(24)
-                cat_tb.text_frame.paragraphs[0].font.bold = True
-
-                code_tb = slide.shapes.add_textbox(code_slot.left, code_slot.top, code_slot.width, code_slot.height)
-                code_tb.text_frame.text = data["code"]
-                code_tb.text_frame.paragraphs[0].font.size = Pt(24)
-                code_tb.text_frame.paragraphs[0].font.bold = True
-                try:
-                    cat_tb.text_frame.paragraphs[0].font.name = 'Pretendard'
-                    code_tb.text_frame.paragraphs[0].font.name = 'Pretendard'
-                except:
-                    pass
-            else:
-                title_tb = slide.shapes.add_textbox(Mm(15), Mm(15), Mm(130), Mm(30))
-                title_tb.text_frame.text = f"{data['name']}\n{data['code']}"
-                title_tb.text_frame.paragraphs[0].font.size = Pt(24)
-                title_tb.text_frame.paragraphs[0].font.bold = True
-                if len(title_tb.text_frame.paragraphs) > 1:
-                    title_tb.text_frame.paragraphs[1].font.size = Pt(24)
-                    title_tb.text_frame.paragraphs[1].font.bold = True
-                try:
-                    title_tb.text_frame.paragraphs[0].font.name = 'Pretendard'
-                    if len(title_tb.text_frame.paragraphs) > 1:
-                        title_tb.text_frame.paragraphs[1].font.name = 'Pretendard'
-                except:
-                    pass
+        # 템플릿 변환 이슈로 슬라이드번호 placeholder가 누락될 때만 폴백 숫자 표시
+        if page_slot and not has_slide_number_placeholder(slide):
+            add_styled_textbox(
+                slide=slide,
+                slot_shape=page_slot,
+                text=f"PAGE  | {page_no}",
+                fallback_left=Mm(10),
+                fallback_top=Mm(10),
+                fallback_w=Mm(40),
+                fallback_h=Mm(8),
+                fallback_size=Pt(10),
+            )
         
         # RRP (표시만 함)
         if data.get('rrp'):
@@ -367,6 +468,7 @@ if selected_menu == '슬라이드 제작':
             c1, c2 = st.columns([3, 1])
             with c1:
                 season_item = st.text_input("시즌 아이템명", "JETSET LUXE")
+                season_color = st.color_picker("시즌 텍스트 색상", "#000000")
                 p_name = st.text_input("제품명", "MEN'S T-SHIRTS")
                 p_code = st.text_input("품번 (필수)", placeholder="예: BKFTM1581")
             
@@ -430,6 +532,7 @@ if selected_menu == '슬라이드 제작':
                 else:
                     st.session_state.product_list.append({
                         "season_item": season_item,
+                        "season_color": season_color,
                         "name":p_name, "code":p_code, "rrp":"", 
                         "main_image":main_img, 
                         "logo":s_logo, 
