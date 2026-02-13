@@ -13,41 +13,39 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
-              sans: [
-                "Pretendard",
-                "Inter",
-                "ui-sans-serif",
-                "system-ui",
-                "-apple-system",
-                "BlinkMacSystemFont",
-                "Segoe UI",
-                "Roboto",
-                "Helvetica Neue",
-                "Arial",
-                "sans-serif",
-              ],
+              sans: ['Pretendard', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
             },
             colors: {
-              border: "hsl(214.3 31.8% 91.4%)",
-              input: "hsl(214.3 31.8% 91.4%)",
-              ring: "hsl(215 20.2% 65.1%)",
-              background: "hsl(0 0% 100%)",
-              foreground: "hsl(222.2 84% 4.9%)",
+              border: 'hsl(214.3 31.8% 91.4%)',
+              input: 'hsl(214.3 31.8% 91.4%)',
+              ring: 'hsl(215 20.2% 65.1%)',
+              background: 'hsl(0 0% 100%)',
+              foreground: 'hsl(222.2 84% 4.9%)',
               primary: {
-                DEFAULT: "hsl(222.2 47.4% 11.2%)",
-                foreground: "hsl(210 40% 98%)",
+                DEFAULT: 'hsl(222.2 47.4% 11.2%)',
+                foreground: 'hsl(210 40% 98%)',
+              },
+              secondary: {
+                DEFAULT: 'hsl(210 40% 96.1%)',
+                foreground: 'hsl(222.2 47.4% 11.2%)',
               },
               muted: {
-                DEFAULT: "hsl(210 40% 96.1%)",
-                foreground: "hsl(215.4 16.3% 46.9%)",
+                DEFAULT: 'hsl(210 40% 96.1%)',
+                foreground: 'hsl(215.4 16.3% 46.9%)',
               },
               card: {
-                DEFAULT: "hsl(0 0% 100%)",
-                foreground: "hsl(222.2 84% 4.9%)",
+                DEFAULT: 'hsl(0 0% 100%)',
+                foreground: 'hsl(222.2 84% 4.9%)',
               },
+            },
+            borderRadius: {
+              lg: '0.5rem',
+              md: 'calc(0.5rem - 2px)',
+              sm: 'calc(0.5rem - 4px)',
             },
           },
         },
@@ -57,9 +55,12 @@
       body {
         background-color: #ffffff;
         color: #020617;
-        font-family: "Pretendard", sans-serif;
+        font-family: 'Pretendard', sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+      }
+      .hidden-view {
+        display: none;
       }
       ::-webkit-scrollbar {
         width: 6px;
@@ -81,194 +82,378 @@
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 bg-primary text-primary-foreground flex items-center justify-center font-bold tracking-tighter text-xs rounded-md shadow-sm">BG</div>
         <div class="flex flex-col justify-center">
-          <h1 class="text-lg font-bold tracking-tight leading-none">
-            Anywear <span class="font-normal text-slate-500 text-sm ml-1">for BOSS GOLF</span>
+          <h1 class="text-lg font-bold text-foreground tracking-tight leading-none">
+            Overviewer <span class="font-normal text-muted-foreground text-sm ml-1">for BOSS GOLF</span>
           </h1>
         </div>
       </div>
-      <div class="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-full border border-slate-200 bg-white text-slate-700 text-sm font-medium">
-        Overviewer
-      </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-[fadeIn_0.3s_ease-out]">
-      <section class="lg:col-span-2 rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-border bg-slate-50">
-          <h2 class="text-base font-semibold text-slate-900">PPT 생성</h2>
-          <p class="mt-1 text-xs text-slate-500">Streamlit 입력 구조를 그대로 유지한 웹 UI입니다.</p>
-        </div>
-
-        <div class="p-5 space-y-4">
-          <div>
-            <label for="apiBase" class="block text-xs font-medium text-slate-600 mb-1.5">API Base URL</label>
-            <input id="apiBase" value="https://overviewmaker.onrender.com" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+    <div class="max-w-[1400px] mx-auto px-4 md:px-8 py-6">
+      <div class="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-6">
+        <aside class="rounded-xl border border-border bg-card h-fit">
+          <div class="p-4 border-b border-border">
+            <div class="w-full h-14 rounded-md bg-slate-900 text-white flex items-center justify-center text-sm font-semibold">BOSS Golf</div>
           </div>
+          <nav class="p-3 space-y-2">
+            <button id="menu-editor" class="w-full text-left px-3 py-2 text-sm rounded-md border border-slate-900 bg-slate-900 text-white">슬라이드 제작</button>
+            <button id="menu-assets" class="w-full text-left px-3 py-2 text-sm rounded-md border border-border bg-white text-slate-700 hover:bg-slate-50">로고&아트워크 관리</button>
+          </nav>
+        </aside>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label for="season_item" class="block text-xs font-medium text-slate-600 mb-1.5">시즌 아이템명</label>
-              <input id="season_item" value="JETSET LUXE" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+        <main>
+          <section id="view-editor">
+            <div class="mb-4">
+              <h2 class="text-2xl font-bold tracking-tight text-slate-900">슬라이드 제작</h2>
+              <p class="mt-1 text-sm text-slate-500">제품 정보를 입력하여 스펙 시트를 생성합니다.</p>
             </div>
-            <div>
-              <label for="season_color" class="block text-xs font-medium text-slate-600 mb-1.5">시즌 색상</label>
-              <input id="season_color" value="#000000" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
-            </div>
-            <div>
-              <label for="name" class="block text-xs font-medium text-slate-600 mb-1.5">카테고리</label>
-              <input id="name" value="MEN'S T-SHIRTS" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
-            </div>
-            <div>
-              <label for="code" class="block text-xs font-medium text-slate-600 mb-1.5">품번</label>
-              <input id="code" value="MFTS-02" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
-            </div>
-            <div>
-              <label for="logo" class="block text-xs font-medium text-slate-600 mb-1.5">로고 파일명</label>
-              <input id="logo" value="선택 없음" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
-            </div>
-            <div>
-              <label for="artworks" class="block text-xs font-medium text-slate-600 mb-1.5">아트워크 파일명들(콤마)</label>
-              <input id="artworks" placeholder="art1.png,art2.png" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
-            </div>
-          </div>
 
-          <div>
-            <label for="color_names" class="block text-xs font-medium text-slate-600 mb-1.5">컬러 이름들(콤마)</label>
-            <input id="color_names" placeholder="BLACK,BEIGE" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
-          </div>
-
-          <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
-            <label for="main_image" class="block text-xs font-medium text-slate-700 mb-1.5">메인 이미지</label>
-            <input id="main_image" type="file" accept=".png,.jpg,.jpeg" class="w-full text-sm" />
-            <p id="mainImageHint" class="mt-1.5 text-xs text-slate-500">아직 파일이 선택되지 않았습니다.</p>
-          </div>
-
-          <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
-            <label for="color_images" class="block text-xs font-medium text-slate-700 mb-1.5">컬러웨이 이미지들</label>
-            <input id="color_images" type="file" accept=".png,.jpg,.jpeg" multiple class="w-full text-sm" />
-            <div id="colorPreview" class="mt-2 flex flex-wrap gap-2"></div>
-          </div>
-
-          <div class="pt-1">
-            <button id="generateBtn" class="w-full md:w-auto inline-flex justify-center items-center px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed">
-              PPT 생성 및 다운로드
-            </button>
-            <p id="status" class="mt-2 text-sm text-slate-600"></p>
-          </div>
-        </div>
-      </section>
-
-      <aside class="lg:col-span-1">
-        <div class="rounded-2xl border border-border bg-card shadow-sm overflow-hidden lg:sticky lg:top-24">
-          <div class="px-5 py-4 border-b border-border bg-slate-50">
-            <h3 class="text-sm font-semibold text-slate-900">요약</h3>
-            <p class="mt-1 text-xs text-slate-500">생성 전 입력값 체크</p>
-          </div>
-          <div class="p-5 space-y-3">
-            <div class="grid grid-cols-2 gap-3">
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p class="text-[11px] text-slate-500">Colorway Count</p>
-                <p id="kColorCount" class="mt-1 text-lg font-semibold text-slate-900">0</p>
+            <div class="rounded-xl border border-border bg-card overflow-hidden">
+              <div class="px-4 pt-4 border-b border-border">
+                <div class="flex gap-2">
+                  <button id="tab-input" class="px-3 py-2 text-sm rounded-t-md bg-slate-900 text-white">정보 입력</button>
+                  <button id="tab-queue" class="px-3 py-2 text-sm rounded-t-md bg-slate-100 text-slate-700">생성 대기열</button>
+                </div>
               </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p class="text-[11px] text-slate-500">Artwork Count</p>
-                <p id="kArtworkCount" class="mt-1 text-lg font-semibold text-slate-900">0</p>
+
+              <div id="tab-input-panel" class="p-4 md:p-5 space-y-6">
+                <section>
+                  <h3 class="text-base font-semibold text-slate-900">1. 기본 정보</h3>
+                  <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-xs font-medium text-slate-600 mb-1.5">시즌 아이템명</label>
+                      <input id="season_item" value="JETSET LUXE" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-slate-600 mb-1.5">시즌 텍스트 색상</label>
+                      <input id="season_color" type="color" value="#000000" class="w-full h-10 rounded-lg border border-input px-2 py-2" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-slate-600 mb-1.5">제품명</label>
+                      <input id="name" value="MEN'S T-SHIRTS" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-slate-600 mb-1.5">품번 (필수)</label>
+                      <input id="code" placeholder="예: BKFTM1581" class="w-full rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+                    </div>
+                  </div>
+                </section>
+
+                <section class="pt-2 border-t border-border">
+                  <h3 class="text-base font-semibold text-slate-900">2. 디자인 자산</h3>
+                  <div class="mt-3 space-y-3">
+                    <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3">
+                      <label class="block text-xs font-medium text-slate-700 mb-1.5">메인 이미지</label>
+                      <input id="main_image" type="file" accept=".png,.jpg,.jpeg" class="w-full text-sm" />
+                      <p id="mainImageHint" class="mt-1 text-xs text-slate-500">슬라이드 좌측에 크게 들어갈 이미지</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1.5">로고 선택</label>
+                        <input id="logo" value="선택 없음" class="w-full rounded-lg border border-input px-3 py-2 text-sm" />
+                      </div>
+                      <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1.5">아트워크 선택 (콤마)</label>
+                        <input id="artworks" placeholder="logo_line.png, emblem.svg" class="w-full rounded-lg border border-input px-3 py-2 text-sm" />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="pt-2 border-t border-border">
+                  <h3 class="text-base font-semibold text-slate-900">3. 컬러웨이 (Colorways)</h3>
+                  <div class="mt-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3">
+                    <label class="block text-xs font-medium text-slate-700 mb-1.5">컬러웨이 이미지 업로드 (최대 4개)</label>
+                    <input id="color_images" type="file" accept=".png,.jpg,.jpeg" multiple class="w-full text-sm" />
+                    <p class="mt-1 text-xs text-slate-500">업로드 후 색상명과 순서를 지정하세요.</p>
+                  </div>
+
+                  <div id="colorway-list" class="mt-3 space-y-2"></div>
+                </section>
+
+                <div class="pt-2">
+                  <button id="addQueueBtn" class="inline-flex justify-center items-center px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">대기열에 추가</button>
+                  <p id="inputStatus" class="mt-2 text-sm text-slate-600"></p>
+                </div>
+              </div>
+
+              <div id="tab-queue-panel" class="hidden-view p-4 md:p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                  <h3 id="queueTitle" class="text-base font-semibold text-slate-900">생성 대기 목록 (0)</h3>
+                  <button id="clearQueueBtn" class="px-3 py-2 text-xs rounded-md border border-border bg-white text-slate-700 hover:bg-slate-50">목록 비우기</button>
+                </div>
+
+                <div id="queueList" class="space-y-2"></div>
+
+                <div class="pt-2 border-t border-border">
+                  <label class="block text-xs font-medium text-slate-600 mb-1.5">API Base URL</label>
+                  <input id="apiBase" value="https://overviewmaker.onrender.com" class="w-full md:w-[420px] rounded-lg border border-input px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+                  <button id="generateBtn" class="mt-3 inline-flex justify-center items-center px-4 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed">
+                    PPT 생성 및 다운로드
+                  </button>
+                  <p id="queueStatus" class="mt-2 text-sm text-slate-600"></p>
+                </div>
               </div>
             </div>
-            <div>
-              <label class="block text-xs font-medium text-slate-600 mb-1.5">생성 파일명</label>
-              <input value="BOSS_Golf_SpecSheet.pptx" readonly class="w-full rounded-lg border border-input px-3 py-2 text-sm bg-slate-50 text-slate-600" />
+          </section>
+
+          <section id="view-assets" class="hidden-view">
+            <div class="mb-4">
+              <h2 class="text-2xl font-bold tracking-tight text-slate-900">자산 관리</h2>
+              <p class="mt-1 text-sm text-slate-500">디자인 자산을 업로드하고 관리합니다.</p>
             </div>
-          </div>
-        </div>
-      </aside>
-    </main>
+
+            <div class="rounded-xl border border-border bg-card p-5 space-y-4">
+              <div class="flex gap-2">
+                <button id="asset-tab-logo" class="px-3 py-2 text-sm rounded-md bg-slate-900 text-white">로고</button>
+                <button id="asset-tab-art" class="px-3 py-2 text-sm rounded-md bg-slate-100 text-slate-700">아트워크</button>
+              </div>
+
+              <div id="artCallout" class="hidden-view rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-800">
+                아트워크 타입 안내
+                <br />- 기본: 높이 20mm (너비 자동)
+                <br />- 가로 타입: 너비 30mm (높이 자동) - 가로로 긴 형태의 아트워크인 경우 선택해주세요
+                <br />- 작은 아트워크: 너비 12mm (높이 자동) - 사이즈가 작은 아트워크인 경우 선택
+              </div>
+
+              <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3">
+                <label class="block text-xs font-medium text-slate-700 mb-1.5">파일 업로드</label>
+                <input type="file" multiple class="w-full text-sm" />
+                <button class="mt-3 px-3 py-2 text-sm rounded-md bg-slate-900 text-white">저장하기</button>
+              </div>
+
+              <div>
+                <h3 class="text-sm font-semibold text-slate-900">보유 파일 목록</h3>
+                <p class="mt-1 text-xs text-slate-500">Vercel 정적 UI에서는 목록 조회 API 연결 후 활성화됩니다.</p>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
 
     <script>
       const $ = (id) => document.getElementById(id);
 
-      const mainImageInput = $("main_image");
-      const colorImagesInput = $("color_images");
-      const artworksInput = $("artworks");
-      const colorPreview = $("colorPreview");
-      const statusEl = $("status");
-      const kColorCount = $("kColorCount");
-      const kArtworkCount = $("kArtworkCount");
+      const state = {
+        selectedMenu: 'editor',
+        selectedTab: 'input',
+        selectedAssetTab: 'logo',
+        queue: [],
+        colorways: [],
+      };
 
-      function setStatus(text, tone) {
-        statusEl.textContent = text;
-        statusEl.className = "mt-2 text-sm ";
-        if (tone === "error") {
-          statusEl.className += "text-red-600";
-        } else if (tone === "success") {
-          statusEl.className += "text-emerald-600";
-        } else {
-          statusEl.className += "text-slate-600";
-        }
+      function setMenu(menu) {
+        state.selectedMenu = menu;
+        const isEditor = menu === 'editor';
+        $('view-editor').classList.toggle('hidden-view', !isEditor);
+        $('view-assets').classList.toggle('hidden-view', isEditor);
+        $('menu-editor').className = isEditor
+          ? 'w-full text-left px-3 py-2 text-sm rounded-md border border-slate-900 bg-slate-900 text-white'
+          : 'w-full text-left px-3 py-2 text-sm rounded-md border border-border bg-white text-slate-700 hover:bg-slate-50';
+        $('menu-assets').className = !isEditor
+          ? 'w-full text-left px-3 py-2 text-sm rounded-md border border-slate-900 bg-slate-900 text-white'
+          : 'w-full text-left px-3 py-2 text-sm rounded-md border border-border bg-white text-slate-700 hover:bg-slate-50';
       }
 
-      function syncSummary() {
-        const colorFiles = colorImagesInput.files ? colorImagesInput.files.length : 0;
-        const artworkCount = (artworksInput.value || "")
-          .split(",")
-          .map((v) => v.trim())
-          .filter(Boolean).length;
-
-        kColorCount.textContent = String(colorFiles);
-        kArtworkCount.textContent = String(artworkCount);
+      function setTab(tab) {
+        state.selectedTab = tab;
+        const isInput = tab === 'input';
+        $('tab-input-panel').classList.toggle('hidden-view', !isInput);
+        $('tab-queue-panel').classList.toggle('hidden-view', isInput);
+        $('tab-input').className = isInput
+          ? 'px-3 py-2 text-sm rounded-t-md bg-slate-900 text-white'
+          : 'px-3 py-2 text-sm rounded-t-md bg-slate-100 text-slate-700';
+        $('tab-queue').className = !isInput
+          ? 'px-3 py-2 text-sm rounded-t-md bg-slate-900 text-white'
+          : 'px-3 py-2 text-sm rounded-t-md bg-slate-100 text-slate-700';
       }
 
-      mainImageInput.addEventListener("change", () => {
-        const f = mainImageInput.files && mainImageInput.files[0];
-        $("mainImageHint").textContent = f ? `선택됨: ${f.name}` : "아직 파일이 선택되지 않았습니다.";
-      });
+      function setAssetTab(tab) {
+        state.selectedAssetTab = tab;
+        const isLogo = tab === 'logo';
+        $('asset-tab-logo').className = isLogo
+          ? 'px-3 py-2 text-sm rounded-md bg-slate-900 text-white'
+          : 'px-3 py-2 text-sm rounded-md bg-slate-100 text-slate-700';
+        $('asset-tab-art').className = !isLogo
+          ? 'px-3 py-2 text-sm rounded-md bg-slate-900 text-white'
+          : 'px-3 py-2 text-sm rounded-md bg-slate-100 text-slate-700';
+        $('artCallout').classList.toggle('hidden-view', isLogo);
+      }
 
-      colorImagesInput.addEventListener("change", () => {
-        colorPreview.innerHTML = "";
-        const files = colorImagesInput.files || [];
-        for (const f of files) {
-          const chip = document.createElement("span");
-          chip.className = "inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700";
-          chip.textContent = f.name;
-          colorPreview.appendChild(chip);
-        }
-        syncSummary();
-      });
+      function getColorwayNameInputId(idx) {
+        return `cw-name-${idx}`;
+      }
 
-      artworksInput.addEventListener("input", syncSummary);
+      function renderColorways() {
+        const list = $('colorway-list');
+        list.innerHTML = '';
 
-      $("generateBtn").addEventListener("click", async () => {
-        const mainImage = mainImageInput.files && mainImageInput.files[0];
-        if (!mainImage) {
-          alert("메인 이미지 파일은 필수입니다.");
+        if (state.colorways.length === 0) {
+          const empty = document.createElement('p');
+          empty.className = 'text-xs text-slate-500';
+          empty.textContent = '업로드된 컬러웨이가 없습니다.';
+          list.appendChild(empty);
           return;
         }
 
-        const apiBase = $("apiBase").value.trim().replace(/\/$/, "");
-        const fd = new FormData();
-        fd.append("season_item", $("season_item").value || "");
-        fd.append("season_color", $("season_color").value || "#000000");
-        fd.append("name", $("name").value || "");
-        fd.append("code", $("code").value || "");
-        fd.append("logo", $("logo").value || "선택 없음");
-        fd.append("artworks", artworksInput.value || "");
-        fd.append("color_names", $("color_names").value || "");
-        fd.append("main_image", mainImage);
+        state.colorways.forEach((item, idx) => {
+          const row = document.createElement('div');
+          row.className = 'grid grid-cols-[56px_minmax(0,1fr)_40px_40px] gap-2 items-center rounded-md border border-border p-2';
 
-        const colorFiles = colorImagesInput.files || [];
-        for (const f of colorFiles) {
-          fd.append("color_images", f);
-        }
+          const thumb = document.createElement('img');
+          thumb.src = item.preview;
+          thumb.className = 'w-14 h-14 object-cover rounded border border-border';
 
-        const btn = $("generateBtn");
-        btn.disabled = true;
-        setStatus("생성 중...", "");
-
-        try {
-          const res = await fetch(`${apiBase}/api/generate`, {
-            method: "POST",
-            body: fd,
+          const input = document.createElement('input');
+          input.id = getColorwayNameInputId(idx);
+          input.value = item.name || '';
+          input.placeholder = `색상명 ${idx + 1}`;
+          input.className = 'w-full rounded-lg border border-input px-3 py-2 text-sm';
+          input.addEventListener('input', (e) => {
+            state.colorways[idx].name = e.target.value;
           });
 
+          const up = document.createElement('button');
+          up.textContent = '↑';
+          up.disabled = idx === 0;
+          up.className = 'px-2 py-2 text-sm rounded border border-border bg-white disabled:opacity-40';
+          up.addEventListener('click', () => {
+            if (idx === 0) return;
+            [state.colorways[idx - 1], state.colorways[idx]] = [state.colorways[idx], state.colorways[idx - 1]];
+            renderColorways();
+          });
+
+          const down = document.createElement('button');
+          down.textContent = '↓';
+          down.disabled = idx === state.colorways.length - 1;
+          down.className = 'px-2 py-2 text-sm rounded border border-border bg-white disabled:opacity-40';
+          down.addEventListener('click', () => {
+            if (idx === state.colorways.length - 1) return;
+            [state.colorways[idx + 1], state.colorways[idx]] = [state.colorways[idx], state.colorways[idx + 1]];
+            renderColorways();
+          });
+
+          row.appendChild(thumb);
+          row.appendChild(input);
+          row.appendChild(up);
+          row.appendChild(down);
+          list.appendChild(row);
+        });
+      }
+
+      function renderQueue() {
+        $('queueTitle').textContent = `생성 대기 목록 (${state.queue.length})`;
+        const list = $('queueList');
+        list.innerHTML = '';
+
+        if (state.queue.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'rounded-md border border-border bg-slate-50 px-3 py-2 text-sm text-slate-500';
+          empty.textContent = '대기 중인 항목이 없습니다.';
+          list.appendChild(empty);
+          return;
+        }
+
+        state.queue.forEach((item, idx) => {
+          const row = document.createElement('div');
+          row.className = 'rounded-md border border-border p-3';
+          row.innerHTML = `
+            <p class="text-sm font-medium text-slate-900">${idx + 1}. ${item.code} - ${item.name}</p>
+            <p class="mt-1 text-xs text-slate-500">컬러: ${item.colors.length}개 | 로고: ${item.logo} | 아트워크: ${item.artworks || '-'}</p>
+          `;
+          list.appendChild(row);
+        });
+      }
+
+      function setStatus(id, msg, type = 'normal') {
+        const el = $(id);
+        if (!el) return;
+        el.textContent = msg;
+        el.className = 'mt-2 text-sm ' + (type === 'error' ? 'text-red-600' : type === 'success' ? 'text-emerald-600' : 'text-slate-600');
+      }
+
+      $('menu-editor').addEventListener('click', () => setMenu('editor'));
+      $('menu-assets').addEventListener('click', () => setMenu('assets'));
+      $('tab-input').addEventListener('click', () => setTab('input'));
+      $('tab-queue').addEventListener('click', () => setTab('queue'));
+      $('asset-tab-logo').addEventListener('click', () => setAssetTab('logo'));
+      $('asset-tab-art').addEventListener('click', () => setAssetTab('art'));
+
+      $('main_image').addEventListener('change', () => {
+        const f = $('main_image').files && $('main_image').files[0];
+        $('mainImageHint').textContent = f ? `선택됨: ${f.name}` : '슬라이드 좌측에 크게 들어갈 이미지';
+      });
+
+      $('color_images').addEventListener('change', () => {
+        const files = Array.from($('color_images').files || []).slice(0, 4);
+        state.colorways = files.map((f) => ({
+          file: f,
+          name: '',
+          preview: URL.createObjectURL(f),
+        }));
+        renderColorways();
+      });
+
+      $('addQueueBtn').addEventListener('click', () => {
+        const mainImage = $('main_image').files && $('main_image').files[0];
+        const code = ($('code').value || '').trim();
+        if (!code || !mainImage) {
+          setStatus('inputStatus', '품번과 메인 이미지는 필수입니다.', 'error');
+          return;
+        }
+
+        state.queue.push({
+          season_item: $('season_item').value || '',
+          season_color: $('season_color').value || '#000000',
+          name: $('name').value || '',
+          code,
+          logo: $('logo').value || '선택 없음',
+          artworks: $('artworks').value || '',
+          main_image: mainImage,
+          colors: state.colorways.map((c) => ({ img: c.file, name: c.name || '' })),
+        });
+
+        renderQueue();
+        setStatus('inputStatus', `'${code}' 대기열에 추가됨`, 'success');
+      });
+
+      $('clearQueueBtn').addEventListener('click', () => {
+        state.queue = [];
+        renderQueue();
+        setStatus('queueStatus', '목록을 비웠습니다.');
+      });
+
+      $('generateBtn').addEventListener('click', async () => {
+        if (state.queue.length === 0) {
+          setStatus('queueStatus', '대기열이 비어 있습니다.', 'error');
+          return;
+        }
+
+        const item = state.queue[0];
+        const apiBase = ($('apiBase').value || '').trim().replace(/\/$/, '');
+        const fd = new FormData();
+        fd.append('season_item', item.season_item);
+        fd.append('season_color', item.season_color);
+        fd.append('name', item.name);
+        fd.append('code', item.code);
+        fd.append('logo', item.logo);
+        fd.append('artworks', item.artworks);
+        fd.append('color_names', item.colors.map((c) => c.name || '').join(','));
+        fd.append('main_image', item.main_image);
+        for (const c of item.colors) {
+          if (c.img) {
+            fd.append('color_images', c.img);
+          }
+        }
+
+        const btn = $('generateBtn');
+        btn.disabled = true;
+        setStatus('queueStatus', '생성 중...');
+
+        try {
+          const res = await fetch(`${apiBase}/api/generate`, { method: 'POST', body: fd });
           if (!res.ok) {
             const text = await res.text();
             throw new Error(`${res.status} ${text}`);
@@ -276,23 +461,27 @@
 
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
+          const a = document.createElement('a');
           a.href = url;
-          a.download = "BOSS_Golf_SpecSheet.pptx";
+          a.download = 'BOSS_Golf_SpecSheet.pptx';
           document.body.appendChild(a);
           a.click();
           a.remove();
           URL.revokeObjectURL(url);
 
-          setStatus("완료: PPT 다운로드를 확인하세요.", "success");
+          setStatus('queueStatus', '완료: PPT 다운로드를 확인하세요.', 'success');
         } catch (e) {
-          setStatus(`실패: ${e.message}`, "error");
+          setStatus('queueStatus', `실패: ${e.message}`, 'error');
         } finally {
           btn.disabled = false;
         }
       });
 
-      syncSummary();
+      setMenu('editor');
+      setTab('input');
+      setAssetTab('logo');
+      renderColorways();
+      renderQueue();
     </script>
   </body>
 </html>
