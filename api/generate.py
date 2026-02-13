@@ -6,6 +6,7 @@ from typing import List
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from ppt_engine import generate_pptx
 
@@ -15,6 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_FILE = str(ROOT / "template.pptx")
 LOGO_DIR = str(ROOT / "assets" / "logos")
 ARTWORK_DIR = str(ROOT / "assets" / "artworks")
+ASSETS_DIR = ROOT / "assets"
+
+if ASSETS_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
 
 
 def _to_bytes_file(upload: UploadFile):
