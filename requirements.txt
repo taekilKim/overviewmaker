@@ -3,3 +3,6 @@ python-pptx
 PyGithub
 streamlit-shadcn-ui
 streamlit-antd-components
+fastapi
+python-multipart
+uvicorn
