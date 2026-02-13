@@ -1,5 +1,0 @@
--r requirements.txt
-streamlit
-PyGithub
-streamlit-shadcn-ui
-streamlit-antd-components
