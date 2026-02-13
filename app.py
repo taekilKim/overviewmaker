@@ -70,6 +70,9 @@ COLORWAY_THREE_ITEMS_LABEL_TOP_MM = 114.8
 COLORWAY_THREE_ITEMS_LABEL_GAP_MM = 28.0
 COLORWAY_IMAGE_WIDTH_MM = 27.0
 COLORWAY_IMAGE_TOP_MM = 120.0
+MAIN_IMAGE_LEFT_MM = 65.0
+MAIN_IMAGE_TOP_MM = 94.3
+MAIN_IMAGE_WIDTH_MM = 90.0
 
 # --- 유틸리티 함수 ---
 def init_folders():
@@ -327,6 +330,11 @@ def add_text_at(slide, text, left_mm, top_mm, width_mm, height_mm, font_name, fo
         node.set("typeface", font_name)
     return tb
 
+def format_color_name(name):
+    if not name:
+        return ""
+    return " ".join(part.capitalize() for part in str(name).strip().split())
+
 def has_slide_number_placeholder(slide):
     for shp in slide.shapes:
         if not getattr(shp, "is_placeholder", False):
@@ -456,7 +464,12 @@ def create_pptx(products):
 
         # 메인 이미지
         if data['main_image']:
-            slide.shapes.add_picture(data['main_image'], left=Mm(20), top=Mm(60), width=Mm(140))
+            slide.shapes.add_picture(
+                data['main_image'],
+                left=Mm(MAIN_IMAGE_LEFT_MM),
+                top=Mm(MAIN_IMAGE_TOP_MM),
+                width=Mm(MAIN_IMAGE_WIDTH_MM),
+            )
         
         # 로고
         if data['logo'] and data['logo'] != "선택 없음":
@@ -517,7 +530,7 @@ def create_pptx(products):
                 slide.shapes.add_picture(c['img'], left=Mm(cx), top=Mm(cy), width=Mm(COLORWAY_IMAGE_WIDTH_MM))
             # 1줄/2개 케이스: 지정 좌표에서 ①CAMEL 형식으로 라벨 표기
             if is_two_item_single_row and rows == 1:
-                label = f"{circled_nums[i]}{(c.get('name') or '').upper()}"
+                label = f"{circled_nums[i]}{format_color_name(c.get('name'))}"
                 add_text_at(
                     slide=slide,
                     text=label,
@@ -532,7 +545,7 @@ def create_pptx(products):
                     align=PP_ALIGN.LEFT,
                 )
             elif is_three_item_single_row and rows == 1:
-                label = f"{circled_nums[i]}{(c.get('name') or '').upper()}"
+                label = f"{circled_nums[i]}{format_color_name(c.get('name'))}"
                 add_text_at(
                     slide=slide,
                     text=label,
@@ -548,7 +561,7 @@ def create_pptx(products):
                 )
             else:
                 tb = slide.shapes.add_textbox(Mm(cx), Mm(cy + img_h + 2), Mm(w), Mm(10))
-                tb.text_frame.text = c['name']
+                tb.text_frame.text = format_color_name(c.get('name'))
                 tb.text_frame.paragraphs[0].font.size = Pt(9)
                 tb.text_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
             
